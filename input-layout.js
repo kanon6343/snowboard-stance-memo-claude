@@ -1,5 +1,7 @@
-/* Claude試作: 入力画面の並び替え・表示切り替えと、左右の足の同時表示。
-   見た目の設定だけで、記録のデータには触れない。設定はこの端末に保存する（キー claude:input-layout-v1）。 */
+/* Claude試作: 入力画面の並び替え（ホーム画面のウィジェット配置のように）と、左右の足の同時表示。
+   見た目の設定だけで、記録のデータには触れない。設定はこの端末に保存する（キー claude:input-layout-v1）。
+   - 入力画面の何もない所を長押し（またはメニューのボタン）で並び替えモード。各まとまりが小さくなって揺れる。
+   - まとまりをつかんで動かすと、ほかのまとまりがよけて並び直る。「−」で外し、下の「+」で戻す。 */
 const InputLayout = (() => {
   'use strict';
   const KEY = 'claude:input-layout-v1';
@@ -11,11 +13,14 @@ const InputLayout = (() => {
     {id: 'stance', label: 'スタンス・幅', nodes: ['.stance-row']},
     {id: 'setback', label: 'セットバック', detail: true, nodes: ['#detailSetback']},
     {id: 'binding', label: 'ビンディング', detail: true, nodes: ['#detailBindingFields', '#bindingProfileStatus']},
-    {id: 'feet', label: '左右の足（角度・ディスク・ビス穴）', fixed: true, nodes: ['#footDockSentinel', '#footDock', '.bindings']},
+    {id: 'feet', label: '左右の足', fixed: true, nodes: ['#footDockSentinel', '#footDock', '.bindings']},
     {id: 'comment', label: 'コメント', nodes: ['#commentDetails']},
   ];
   const DEFAULT = BLOCKS.map(b => b.id);
+  const info = id => BLOCKS.find(b => b.id === id);
   const byId = id => document.getElementById(id);
+  const reduced = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+  const INTERACTIVE = 'input,select,textarea,button,a,label,summary,[role="tab"],[contenteditable],.hole,.ref-slot,.chip,.board-suggestions';
   let settings = {order: DEFAULT.slice(), off: [], feet: 'tabs'};
   let editing = false, tutorial = false;
 
@@ -24,7 +29,7 @@ const InputLayout = (() => {
       const s = JSON.parse(localStorage.getItem(KEY) || 'null');
       if (!s || typeof s !== 'object') return;
       if (Array.isArray(s.order)) settings.order = [...new Set(s.order.filter(id => DEFAULT.includes(id))), ...DEFAULT.filter(id => !s.order.includes(id))];
-      if (Array.isArray(s.off)) settings.off = s.off.filter(id => DEFAULT.includes(id) && !BLOCKS.find(b => b.id === id).fixed);
+      if (Array.isArray(s.off)) settings.off = s.off.filter(id => DEFAULT.includes(id) && !info(id).fixed);
       if (s.feet === 'both') settings.feet = 'both';
     } catch { /* 読めなければ最初の並び */ }
   }
@@ -32,7 +37,7 @@ const InputLayout = (() => {
     try { localStorage.setItem(KEY, JSON.stringify(settings)); return true; } catch { return false; }
   }
 
-  // ---- 入力画面をまとまり（ブロック）に分ける
+  // ---- 入力画面をまとまり（ウィジェット）に分ける。中身の HTML と ID は変えない
   const blocks = new Map();
   for (const b of BLOCKS) {
     const nodes = b.nodes.map(sel => card.querySelector(':scope > ' + sel)).filter(Boolean);
@@ -42,17 +47,24 @@ const InputLayout = (() => {
     wrap.dataset.block = b.id;
     if (b.detail) wrap.dataset.detailOnly = 'true';
     nodes[0].before(wrap);
-    const bar = document.createElement('div');
-    bar.className = 'layout-bar';
-    bar.innerHTML = '<button type="button" class="layout-grip"><span class="layout-grip-icon" aria-hidden="true">≡</span><span class="layout-name"></span></button>'
-      + (b.fixed ? '<span class="layout-fixed">常に表示</span>' : '<button type="button" class="layout-eye" aria-pressed="true">表示中</button>');
-    bar.querySelector('.layout-name').textContent = b.label + (b.detail ? '（詳細入力のとき）' : '');
-    bar.querySelector('.layout-grip').setAttribute('aria-label', b.label + 'を移動。上下の矢印キーでも動かせます');
-    wrap.append(bar, ...nodes);
+    const tag = document.createElement('div');
+    tag.className = 'layout-tag';
+    tag.innerHTML = '<span class="layout-name"></span>' + (b.fixed ? '' : '<button type="button" class="layout-remove" aria-label="">−</button>');
+    tag.querySelector('.layout-name').textContent = b.label + (b.detail ? '（詳細入力）' : '');
+    tag.querySelector('.layout-remove')?.setAttribute('aria-label', b.label + 'を画面から外す');
+    const content = document.createElement('div');
+    content.className = 'layout-content';
+    content.append(...nodes);
+    wrap.append(tag, content);
     blocks.set(b.id, wrap);
   }
   const anchor = document.createComment('input-layout-end');
   [...blocks.values()].at(-1)?.after(anchor);
+
+  const tray = document.createElement('div');
+  tray.className = 'layout-tray';
+  tray.hidden = true;
+  anchor.after(tray);
 
   const notice = document.createElement('p');
   notice.className = 'layout-hidden-notice';
@@ -63,8 +75,8 @@ const InputLayout = (() => {
   const toolbar = document.createElement('div');
   toolbar.className = 'layout-toolbar';
   toolbar.hidden = true;
-  toolbar.innerHTML = '<div><strong>入力画面の並びを変える</strong><p>≡ の行をつかんで上下に動かします。「表示中」を押すと隠せます。</p></div>'
-    + '<div class="layout-toolbar-actions"><button type="button" id="layoutReset">最初の並びに戻す</button><button type="button" id="layoutDone" class="layout-done">完了</button></div>'
+  toolbar.innerHTML = '<div class="layout-toolbar-text"><strong>並びを変える</strong><p>まとまりをつかんで動かします。「−」で外し、下の「＋」で戻せます。</p></div>'
+    + '<button type="button" id="layoutDone" class="layout-done">完了</button>'
     + '<p id="layoutLive" class="layout-live" role="status" aria-live="polite"></p>';
   card.prepend(toolbar);
 
@@ -72,14 +84,31 @@ const InputLayout = (() => {
   function apply() {
     const order = tutorial ? DEFAULT : settings.order;
     for (const id of order) { const el = blocks.get(id); if (el) anchor.before(el); }
-    for (const [id, el] of blocks) {
-      const off = !tutorial && settings.off.includes(id);
-      el.dataset.off = String(off);
-      const eye = el.querySelector('.layout-eye');
-      if (eye) { eye.setAttribute('aria-pressed', String(!off)); eye.textContent = off ? '非表示' : '表示中'; }
-    }
+    for (const [id, el] of blocks) el.dataset.off = String(!tutorial && settings.off.includes(id));
+    drawTray();
     applyFeet();
     checkHidden();
+  }
+  function drawTray() {
+    const off = settings.off.filter(id => blocks.has(id));
+    tray.replaceChildren();
+    const h = document.createElement('p');
+    h.className = 'layout-tray-title';
+    h.textContent = off.length ? '外した項目（押すと戻ります）' : '外した項目はありません';
+    tray.append(h);
+    for (const id of off) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'layout-add';
+      b.dataset.id = id;
+      b.textContent = '＋ ' + info(id).label;
+      tray.append(b);
+    }
+    const reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'layout-reset';
+    reset.textContent = '最初の並びに戻す';
+    tray.append(reset);
   }
   function applyFeet() {
     const both = settings.feet === 'both';
@@ -91,8 +120,8 @@ const InputLayout = (() => {
     if (typeof renderRefSlots === 'function') renderRefSlots();
     if (typeof FootDock !== 'undefined' && FootDock) FootDock.sync();
   }
-  // 両方表示の時は、ほかの処理が片方を隠しても戻す
   if (typeof MutationObserver === 'function') {
+    // 両方表示の時は、ほかの処理が片方を隠しても戻す
     const mo = new MutationObserver(() => {
       if (settings.feet !== 'both') return;
       ['leftFootPanel', 'rightFootPanel'].forEach(id => { const p = byId(id); if (p && p.hidden) p.hidden = false; });
@@ -105,91 +134,142 @@ const InputLayout = (() => {
     }).observe(document.documentElement, {attributes: true, attributeFilter: ['data-tutorial-active']});
   }
 
-  // ---- 隠したまとまりに入力が残っていたら知らせる
+  // ---- 外したまとまりに入力が残っていたら知らせる
   function hasValue(el) {
     if ([...el.querySelectorAll('input:not([type=hidden]),textarea')].some(i => i.value.trim() !== '')) return true;
     if ([...el.querySelectorAll('select')].some(s => !s.hidden && s.value !== '' && !s.closest('[hidden]'))) return true;
-    return !!el.querySelector('[data-stance][aria-pressed="true"], [data-stance].active');
+    return !!el.querySelector('[data-stance].active, [data-stance][aria-pressed="true"]');
   }
   function checkHidden() {
     const names = settings.off.filter(id => {
-      const el = blocks.get(id), b = BLOCKS.find(x => x.id === id);
+      const el = blocks.get(id);
       if (!el || tutorial) return false;
-      if (b.detail && document.documentElement.dataset.inputMode !== 'detail') return false;
+      if (info(id).detail && document.documentElement.dataset.inputMode !== 'detail') return false;
       return hasValue(el);
-    }).map(id => BLOCKS.find(b => b.id === id).label);
+    }).map(id => info(id).label);
     notice.hidden = !names.length || editing;
-    notice.textContent = names.length ? '非表示にした「' + names.join('」「') + '」に入力があります。保存すると一緒に記録されます。' : '';
+    notice.textContent = names.length ? '外した「' + names.join('」「') + '」に入力があります。保存すると一緒に記録されます。' : '';
   }
   setInterval(() => { if (settings.off.length) checkHidden(); }, 1500);
 
-  // ---- 並び替えモード
+  // ---- 並び替えモードに入る・出る
+  const current = () => [...card.querySelectorAll(':scope > .layout-block')].filter(el => el.dataset.off !== 'true');
   function start() {
-    if (tutorial) return;
+    if (tutorial || editing) return;
     if (typeof MenuControls !== 'undefined' && MenuControls.close) MenuControls.close();
     if (typeof showView === 'function') showView('input');
     editing = true;
+    document.activeElement?.blur?.();
     card.classList.add('layout-editing');
+    if (!reduced()) card.classList.add('layout-wiggle');
     toolbar.hidden = false;
+    tray.hidden = false;
     notice.hidden = true;
-    blocks.forEach(el => el.querySelectorAll(':scope > :not(.layout-bar)').forEach(n => { n.inert = true; }));
+    blocks.forEach(el => { el.querySelector('.layout-content').inert = true; el.tabIndex = 0; el.setAttribute('aria-label', info(el.dataset.block).label + '。上下の矢印キーで移動'); });
+    drawTray();
+    try { navigator.vibrate?.(12); } catch { /* 振動できない端末 */ }
     requestAnimationFrame(() => card.scrollIntoView({block: 'start', behavior: reduced() ? 'auto' : 'smooth'}));
     byId('layoutLive').textContent = '';
   }
   function finish() {
+    if (!editing) return;
+    endDrag();
     editing = false;
-    card.classList.remove('layout-editing');
+    card.classList.remove('layout-editing', 'layout-wiggle');
     toolbar.hidden = true;
-    blocks.forEach(el => el.querySelectorAll(':scope > :not(.layout-bar)').forEach(n => { n.inert = false; }));
+    tray.hidden = true;
+    blocks.forEach(el => {
+      el.querySelector('.layout-content').inert = false; el.removeAttribute('tabindex'); el.removeAttribute('aria-label');
+      el.style.transform = ''; el.style.transition = ''; delete el.dataset.dy;   // 動きの途中の位置を残さない
+    });
     settings.order = [...card.querySelectorAll(':scope > .layout-block')].map(el => el.dataset.block);
     const ok = save();
     const st = byId('inputLayoutStatus');
     if (st) st.textContent = ok ? '並びを保存しました（この端末に記憶）。' : '並びを保存できませんでした。この端末の保存領域を確認してください。';
     apply();
-    if (typeof renderRefSlots === 'function') renderRefSlots();
   }
-  const reduced = () => window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
-  const current = () => [...card.querySelectorAll(':scope > .layout-block')];
   function announce(el) {
     const list = current(), i = list.indexOf(el);
-    byId('layoutLive').textContent = BLOCKS.find(b => b.id === el.dataset.block).label + '：' + (i + 1) + '番目 / ' + list.length;
+    byId('layoutLive').textContent = info(el.dataset.block).label + '：' + (i + 1) + '番目 / ' + list.length;
   }
 
-  // ドラッグ（指・マウス共通）
-  let drag = null;
-  card.addEventListener('pointerdown', e => {
-    if (!editing) return;
-    const bar = e.target.closest('.layout-bar');
-    if (!bar || e.target.closest('.layout-eye') || (e.pointerType === 'mouse' && e.button !== 0)) return;
-    const el = bar.parentElement;
-    e.preventDefault();
-    try { bar.setPointerCapture(e.pointerId); } catch { /* 取れなくても動かせる */ }
-    drag = {el, bar, id: e.pointerId, y: e.clientY, start: e.clientY, top: el.getBoundingClientRect().top, raf: 0, moved: false};
-    el.classList.add('dragging');
-  });
-  function place(clientY) {
-    const {el} = drag;
-    const before = el.getBoundingClientRect().top - (parseFloat(el.dataset.dy) || 0);
-    const list = current().filter(x => x !== el);
-    let target = null;
-    for (const other of list) {
-      const r = other.getBoundingClientRect();
-      if (clientY < r.top + r.height / 2) { target = other; break; }
+  // ほかのまとまりが、よけるように動く（FLIP）
+  function animateMove(change) {
+    const others = [...blocks.values()];
+    const before = new Map(others.map(el => [el, el.offsetParent ? el.offsetTop : null]));
+    change();
+    if (reduced()) return;
+    for (const el of others) {
+      if ((drag && el === drag.el) || el.dataset.off === 'true' || before.get(el) === null) continue;
+      const dy = before.get(el) - el.offsetTop;
+      if (!dy) continue;
+      el.style.transition = 'none';
+      el.style.transform = 'translateY(' + dy + 'px)';
+      requestAnimationFrame(() => { el.style.transition = 'transform .22s ease'; el.style.transform = ''; });
     }
-    const next = target || anchor;   // ブロックは anchor の前に続けて並んでいる
-    if (el.nextSibling !== next) { next.before(el); drag.moved = true; announce(el); }
-    const after = el.getBoundingClientRect().top - (parseFloat(el.dataset.dy) || 0);
-    drag.start += after - before;
+  }
+
+  // ---- 長押しで並び替えモードへ（入力欄やボタンの上では反応しない）
+  let press = null;
+  card.addEventListener('pointerdown', e => {
+    if (editing || tutorial || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    if (e.target.closest(INTERACTIVE) || !e.target.closest('.layout-block')) return;
+    press = {x: e.clientX, y: e.clientY, id: e.pointerId, timer: setTimeout(() => { press = null; start(); suppressClick = true; }, 550)};
+  });
+  const cancelPress = () => { if (press) { clearTimeout(press.timer); press = null; } };
+  card.addEventListener('pointermove', e => { if (press && e.pointerId === press.id && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10) cancelPress(); });
+  ['pointerup', 'pointercancel'].forEach(t => card.addEventListener(t, cancelPress));
+  window.addEventListener('scroll', cancelPress, {passive: true});
+  let suppressClick = false;
+  card.addEventListener('click', e => { if (suppressClick) { suppressClick = false; e.preventDefault(); e.stopPropagation(); } }, true);
+  card.addEventListener('contextmenu', e => { if (editing || press) e.preventDefault(); });
+
+  // ---- 並び替えモードのドラッグ（少し押さえてから動かす。すぐ動かすとページのスクロール）
+  let drag = null, hold = null;
+  card.addEventListener('pointerdown', e => {
+    if (!editing || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const el = e.target.closest('.layout-block');
+    if (!el || el.dataset.off === 'true' || e.target.closest('.layout-remove')) return;
+    e.stopPropagation();   // 入力・履歴の左右スワイプにしない
+    const begin = () => {
+      hold = null;
+      try { el.setPointerCapture(e.pointerId); } catch { /* 取れなくても動かせる */ }
+      drag = {el, id: e.pointerId, y: lastY, start: lastY, raf: 0};
+      el.classList.add('dragging');
+      try { navigator.vibrate?.(8); } catch { /* なし */ }
+    };
+    let lastY = e.clientY;
+    if (e.pointerType === 'mouse') { begin(); return; }
+    hold = {id: e.pointerId, x: e.clientX, y: e.clientY, timer: setTimeout(begin, 180), track: ev => { lastY = ev.clientY; }};
+  }, true);
+  card.addEventListener('touchstart', e => { if (editing) e.stopPropagation(); }, {passive: true});
+  // つかんでいる間はページをスクロールさせない
+  document.addEventListener('touchmove', e => { if (drag) e.preventDefault(); }, {passive: false});
+
+  function place(clientY) {
+    // 位置は offsetTop（動き中の transform に左右されない）で比べる。カードが基準（position:relative）
+    const {el} = drag;
+    const cardTop = card.getBoundingClientRect().top;
+    const before = el.offsetTop;
+    const others = current().filter(x => x !== el);
+    let target = null;
+    for (const other of others) {
+      if (clientY < cardTop + other.offsetTop + other.offsetHeight / 2) { target = other; break; }
+    }
+    const next = target || anchor;
+    if (el.nextSibling !== next) { animateMove(() => next.before(el)); announce(el); }
+    drag.start += el.offsetTop - before;
     const dy = clientY - drag.start;
     el.dataset.dy = String(dy);
-    el.style.transform = 'translateY(' + dy + 'px)';
+    el.style.transition = 'none';
+    el.style.transform = 'translateY(' + dy + 'px) scale(1.03)';
   }
   function autoScroll() {
     if (!drag) return;
-    const edge = 70, y = drag.y;
+    const edge = 80, y = drag.y;
     let v = 0;
-    if (y < edge) v = -Math.ceil((edge - y) / 6);
-    else if (y > innerHeight - edge) v = Math.ceil((y - (innerHeight - edge)) / 6);
+    if (y < edge) v = -Math.ceil((edge - y) / 5);
+    else if (y > innerHeight - edge) v = Math.ceil((y - (innerHeight - edge)) / 5);
     if (v) {
       const s0 = scrollY; scrollBy(0, v); const ds = scrollY - s0;
       if (ds) { drag.start -= ds; place(drag.y); }
@@ -197,20 +277,28 @@ const InputLayout = (() => {
     drag.raf = requestAnimationFrame(autoScroll);
   }
   card.addEventListener('pointermove', e => {
+    if (hold && e.pointerId === hold.id) {
+      hold.track(e);
+      if (Math.hypot(e.clientX - hold.x, e.clientY - hold.y) > 8) { clearTimeout(hold.timer); hold = null; }   // スクロールしたい
+      return;
+    }
     if (!drag || e.pointerId !== drag.id) return;
+    e.preventDefault();
     drag.y = e.clientY;
     place(e.clientY);
     if (!drag.raf) drag.raf = requestAnimationFrame(autoScroll);
   });
   function endDrag(e) {
+    if (hold && (!e || e.pointerId === hold.id)) { clearTimeout(hold.timer); hold = null; }
     if (!drag || (e && e.pointerId !== drag.id)) return;
     cancelAnimationFrame(drag.raf);
     const {el} = drag;
-    el.classList.remove('dragging');
-    el.style.transform = '';
-    delete el.dataset.dy;
-    if (drag.moved) announce(el);
     drag = null;
+    el.classList.remove('dragging');
+    delete el.dataset.dy;
+    el.style.transition = reduced() ? 'none' : 'transform .2s ease';
+    el.style.transform = '';
+    announce(el);
   }
   card.addEventListener('pointerup', endDrag);
   card.addEventListener('pointercancel', endDrag);
@@ -220,34 +308,47 @@ const InputLayout = (() => {
   card.addEventListener('keydown', e => {
     if (!editing) return;
     if (e.key === 'Escape') { e.preventDefault(); finish(); byId('editInputLayout')?.focus(); return; }
-    const grip = e.target.closest('.layout-grip');
-    if (!grip || !['ArrowUp', 'ArrowDown'].includes(e.key)) return;
+    const el = e.target.closest?.('.layout-block');
+    if (!el || e.target !== el || !['ArrowUp', 'ArrowDown'].includes(e.key)) return;
     e.preventDefault();
-    const el = grip.closest('.layout-block'), list = current(), i = list.indexOf(el);
-    if (e.key === 'ArrowUp' && i > 0) list[i - 1].before(el);
-    if (e.key === 'ArrowDown' && i < list.length - 1) list[i + 1].after(el);
-    grip.focus();
+    const list = current(), i = list.indexOf(el);
+    animateMove(() => {
+      if (e.key === 'ArrowUp' && i > 0) list[i - 1].before(el);
+      if (e.key === 'ArrowDown' && i < list.length - 1) list[i + 1].after(el);
+    });
+    el.focus();
     announce(el);
   });
+
+  // 外す・戻す・完了
   card.addEventListener('click', e => {
     if (!editing) return;
-    const eye = e.target.closest('.layout-eye');
-    if (eye) {
-      const id = eye.closest('.layout-block').dataset.block;
-      settings.off = settings.off.includes(id) ? settings.off.filter(x => x !== id) : [...settings.off, id];
-      const off = settings.off.includes(id);
-      eye.closest('.layout-block').dataset.off = String(off);
-      eye.setAttribute('aria-pressed', String(!off));
-      eye.textContent = off ? '非表示' : '表示中';
+    const rm = e.target.closest('.layout-remove');
+    if (rm) {
+      const el = rm.closest('.layout-block'), id = el.dataset.block;
+      animateMove(() => { settings.off = [...new Set([...settings.off, id])]; el.dataset.off = 'true'; });
+      drawTray();
+      byId('layoutLive').textContent = info(id).label + 'を外しました。下の「＋」で戻せます。';
+      return;
+    }
+    const add = e.target.closest('.layout-add');
+    if (add) {
+      const id = add.dataset.id, el = blocks.get(id);
+      animateMove(() => { settings.off = settings.off.filter(x => x !== id); el.dataset.off = 'false'; });
+      drawTray();
+      byId('layoutLive').textContent = info(id).label + 'を戻しました。';
+      return;
+    }
+    if (e.target.closest('.layout-reset')) {
+      animateMove(() => {
+        settings.off = [];
+        for (const id of DEFAULT) { const el = blocks.get(id); el.dataset.off = 'false'; anchor.before(el); }
+      });
+      drawTray();
+      byId('layoutLive').textContent = '最初の並びに戻しました。「完了」で保存します。';
       return;
     }
     if (e.target.closest('#layoutDone')) finish();
-    if (e.target.closest('#layoutReset')) {
-      settings.off = [];
-      for (const id of DEFAULT) anchor.before(blocks.get(id));
-      blocks.forEach(el => { el.dataset.off = 'false'; const eye2 = el.querySelector('.layout-eye'); if (eye2) { eye2.setAttribute('aria-pressed', 'true'); eye2.textContent = '表示中'; } });
-      byId('layoutLive').textContent = '最初の並びに戻しました。「完了」で保存します。';
-    }
   });
 
   // ---- メニューの設定
@@ -257,10 +358,10 @@ const InputLayout = (() => {
     const ok = save();
     applyFeet();
     const st = byId('inputLayoutStatus');
-    if (st) st.textContent = ok ? (settings.feet === 'both' ? '左右の足を同時に表示します。' : '左右の足を切り替えて表示します。') : '設定を保存できませんでした。';
+    if (st) st.textContent = ok ? (settings.feet === 'both' ? '左右の足を横に並べて表示します。' : '左右の足を切り替えて表示します。') : '設定を保存できませんでした。';
   });
 
   load();
   apply();
-  return {start, finish, settings: () => JSON.parse(JSON.stringify(settings))};
+  return {start, finish, editing: () => editing, settings: () => JSON.parse(JSON.stringify(settings))};
 })();

@@ -1,44 +1,74 @@
-/* Claude試作: 入力画面の並び替え・表示切り替え・左右の足の同時表示 */
-:root{--layout-bar-bg:#eef4f7;--layout-bar-line:#b9c8d1;--layout-lift:0 8px 22px rgba(10,40,60,.22)}
-:root[data-theme="dark"]{--layout-bar-bg:var(--night-raised,#26343f);--layout-bar-line:#4d6271;--layout-lift:0 8px 22px rgba(0,0,0,.5)}
+/* Claude試作: 入力画面の並び替え（ホーム画面のウィジェット配置風）と、左右の足を横に並べる表示 */
+:root{--layout-tile-bg:#ffffff;--layout-tile-line:#b9c8d1;--layout-tray-bg:#eef4f7;--layout-lift:0 14px 28px rgba(10,40,60,.28);--layout-badge:#4a5a64;--layout-badge-ink:#ffffff}
+:root[data-theme="dark"]{--layout-tile-bg:var(--night-card,#1d2a33);--layout-tile-line:#4d6271;--layout-tray-bg:var(--night-raised,#26343f);--layout-lift:0 14px 28px rgba(0,0,0,.55);--layout-badge:#c9d6de;--layout-badge-ink:#10181e}
 
-.layout-bar{display:none}
-.layout-block[data-off="true"]{display:none}
+.layout-tag,.layout-tray{display:none}
+.layout-block[data-off="true"]{display:none!important}
 .layout-hidden-notice{margin:0 0 10px;padding:8px 10px;border:1px solid var(--outdoor-amber-border,#8a3b04);border-radius:8px;font-size:13px;line-height:1.5;color:var(--outdoor-ink)}
-.layout-hidden-notice[hidden],.layout-toolbar[hidden]{display:none!important}
+.layout-hidden-notice[hidden],.layout-toolbar[hidden],.layout-tray[hidden]{display:none!important}
 
-/* 並び替えモード：中身をたたんで、行だけを並べる */
-.layout-editing .layout-block{display:block;margin:0 0 8px;border-radius:10px;transition:box-shadow .15s}
-.layout-editing .layout-block > :not(.layout-bar){display:none!important}
-.layout-editing .layout-bar{display:flex;align-items:center;gap:8px;min-height:52px;padding:4px 6px 4px 4px;background:var(--layout-bar-bg);border:1px solid var(--layout-bar-line);border-radius:10px;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
-.layout-editing .layout-block[data-off="true"] .layout-bar{opacity:.55;border-style:dashed}
-.layout-editing .layout-block.dragging{position:relative;z-index:3;box-shadow:var(--layout-lift)}
-.layout-editing .layout-block.dragging .layout-bar{cursor:grabbing}
-.layout-grip{flex:1;display:flex;align-items:center;gap:10px;min-height:44px;min-width:0;padding:0 8px;border:0;background:transparent;color:var(--outdoor-ink);font:inherit;font-size:15px;font-weight:600;text-align:left;cursor:inherit;touch-action:none}
-.layout-grip-icon{font-size:22px;line-height:1;color:var(--outdoor-muted)}
-.layout-name{min-width:0;overflow-wrap:anywhere}
-.layout-eye{flex:none;min-height:40px;min-width:72px;padding:0 10px;border:1px solid var(--outdoor-border);border-radius:999px;background:transparent;color:var(--outdoor-ink);font:inherit;font-size:13px}
-.layout-eye[aria-pressed="false"]{color:var(--outdoor-muted);border-style:dashed}
-.layout-fixed{flex:none;font-size:12px;color:var(--outdoor-muted);padding:0 8px}
+/* ---- 並び替えモード：本物の画面を小さくしたタイルにして並べる */
+.setup-card.layout-editing{position:relative;-webkit-touch-callout:none}
+.layout-editing .layout-block{position:relative;margin:0 0 14px;padding:22px 8px 8px;background:var(--layout-tile-bg);border:1px solid var(--layout-tile-line);border-radius:14px;cursor:grab;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.layout-editing .layout-content{zoom:.5;pointer-events:none}
+.layout-editing .layout-content [hidden]{display:none!important}
+:root:not([data-input-mode="detail"]) .layout-editing .layout-block[data-detail-only="true"]::after{content:"詳細入力のときに表示されます";display:block;padding:4px 2px 2px;font-size:12px;color:var(--outdoor-muted)}
+.layout-editing .layout-tag{display:flex;align-items:center;position:absolute;top:4px;left:20px;right:10px;font-size:12px;font-weight:700;color:var(--outdoor-muted);pointer-events:none}
+.layout-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.layout-remove{pointer-events:auto;position:absolute;top:-16px;left:-18px;width:30px;height:30px;padding:0;border:2px solid var(--layout-tile-bg);border-radius:50%;background:var(--layout-badge);color:var(--layout-badge-ink);font:inherit;font-size:20px;font-weight:700;line-height:1;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.layout-remove::after{content:"";position:absolute;inset:-8px}
+.layout-editing .layout-block.dragging{z-index:5;cursor:grabbing;box-shadow:var(--layout-lift)}
+.layout-editing .layout-block:focus-visible{outline:3px solid var(--outdoor-blue);outline-offset:2px}
+
+/* 揺れ（transform とは別の rotate を使うので、ドラッグの移動と重ならない） */
+@keyframes layout-wiggle{0%{rotate:-.6deg}50%{rotate:.6deg}100%{rotate:-.6deg}}
+.layout-wiggle .layout-block:not(.dragging){animation:layout-wiggle .32s ease-in-out infinite}
+.layout-wiggle .layout-block:nth-child(even):not(.dragging){animation-delay:-.16s}
+@media (prefers-reduced-motion:reduce){.layout-wiggle .layout-block{animation:none!important}}
+
 .layout-editing .editor-actions,.layout-editing .draft-status,.layout-editing .detail-retained,.layout-editing .history-edit-banner{display:none!important}
 
-.layout-toolbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:4;display:grid;gap:8px;margin:0 0 12px;padding:10px 12px;border:1px solid var(--layout-bar-line);border-radius:12px;background:var(--layout-bar-bg)}
+.layout-toolbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 10px;margin:0 0 18px;padding:10px 12px 10px 58px;border:1px solid var(--layout-tile-line);border-radius:12px;background:var(--layout-tray-bg)}
 .layout-toolbar strong{font-size:15px;color:var(--outdoor-ink)}
-.layout-toolbar p{margin:2px 0 0;font-size:13px;line-height:1.5;color:var(--outdoor-muted)}
-.layout-toolbar-actions{display:flex;gap:8px;flex-wrap:wrap}
-.layout-toolbar-actions button{flex:1 1 8rem;min-height:44px;border:1px solid var(--outdoor-border);border-radius:8px;background:transparent;color:var(--outdoor-ink);font:inherit;font-size:14px}
-.layout-toolbar-actions .layout-done{background:var(--outdoor-blue);border-color:var(--outdoor-blue);color:#fff;font-weight:600}
-:root[data-theme="dark"] .layout-toolbar-actions .layout-done{color:#08202c}
-.layout-live{margin:0;font-size:12.5px;min-height:1em}
-.layout-grip:focus-visible,.layout-eye:focus-visible{outline:3px solid var(--outdoor-blue);outline-offset:2px}
+.layout-toolbar p{margin:2px 0 0;font-size:12.5px;line-height:1.45;color:var(--outdoor-muted)}
+.layout-done{min-height:44px;min-width:76px;padding:0 16px;border:0;border-radius:999px;background:var(--outdoor-blue);color:#fff;font:inherit;font-size:15px;font-weight:700}
+:root[data-theme="dark"] .layout-done{color:#08202c}
+.layout-live{grid-column:1/-1;margin:0;font-size:12px;min-height:1em;color:var(--outdoor-muted)}
 
-/* 左右の足を同時に表示 */
+.layout-editing .layout-tray{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 0;padding:12px;border:1px dashed var(--layout-tile-line);border-radius:12px;background:var(--layout-tray-bg)}
+.layout-tray-title{flex-basis:100%;margin:0;font-size:12.5px;color:var(--outdoor-muted)}
+.layout-add,.layout-reset{min-height:40px;padding:0 14px;border:1px solid var(--outdoor-border);border-radius:999px;background:var(--layout-tile-bg);color:var(--outdoor-ink);font:inherit;font-size:14px}
+.layout-reset{border-style:dashed;color:var(--outdoor-muted)}
+
+/* ---- 左右の足を横に並べる（スマホでも左右） */
 html[data-foot-layout="both"] #footDock,html[data-foot-layout="both"] #footDockSentinel{display:none!important}
-html[data-foot-layout="both"] .setup-card .bindings{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
-/* 横に並べるのは、ビス穴を押せる大きさが取れる幅だけ（スマホは上下に並べる） */
-@media (min-width:700px){html[data-foot-layout="both"] .setup-card .bindings{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
-html[data-foot-layout="both"] .binding-panel{min-width:0;border:1px solid var(--layout-bar-line);border-radius:10px;padding:8px 6px}
-html[data-foot-layout="both"] .binding-panel::before{display:block;margin:0 0 4px;font-weight:700;font-size:14px;color:var(--outdoor-ink);text-align:center}
+html[data-foot-layout="both"] .setup-card .bindings{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px}
+html[data-foot-layout="both"] .setup-card .binding-panel{min-width:0;padding:6px 5px 8px;border:1px solid var(--layout-tile-line);border-radius:10px}
+html[data-foot-layout="both"] .setup-card .binding-panel::before{display:block;margin:0 0 6px;font-weight:700;font-size:14px;color:var(--outdoor-ink);text-align:center}
 html[data-foot-layout="both"] #leftFootPanel::before{content:"左足"}
 html[data-foot-layout="both"] #rightFootPanel::before{content:"右足"}
-@media (prefers-reduced-motion:reduce){.layout-editing .layout-block{transition:none}}
+/* 角度・ディスクは縦に積む */
+html[data-foot-layout="both"] .setup-card .side-row{display:grid;grid-template-columns:minmax(0,1fr)!important;gap:8px}
+html[data-foot-layout="both"] .setup-card .angle{max-width:none;transform:none;font-size:12px}
+html[data-foot-layout="both"] .setup-card .angle input{width:100%;box-sizing:border-box}
+html[data-foot-layout="both"] .setup-card .disk-label{font-size:12px}
+html[data-foot-layout="both"] .setup-card .disk{display:grid;justify-items:stretch;width:100%}
+html[data-foot-layout="both"] .setup-card .disk-group{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+html[data-foot-layout="both"] .setup-card .chip{min-width:0;padding:6px 0}
+/* ビス穴は丸のまま小さく。押せる範囲は行いっぱいに広がる */
+html[data-foot-layout="both"] .setup-card .holes{width:100%}
+html[data-foot-layout="both"] .setup-card .row,html[data-foot-layout="both"] .setup-card .ref-line{gap:2px}
+html[data-foot-layout="both"] .setup-card .hole{min-height:0;aspect-ratio:1}
+html[data-foot-layout="both"] .setup-card .hole.active::after{font-size:18px}
+html[data-foot-layout="both"] .setup-card .ref-wrap,html[data-foot-layout="both"] .setup-card .ref-line,html[data-foot-layout="both"] .setup-card .ref-slot{height:30px;min-height:0}
+html[data-foot-layout="both"] .setup-card .ref-wrap{margin:3px 0}
+html[data-foot-layout="both"] .setup-card .binding-heading{margin:10px 0 4px;padding-top:8px;font-size:12px}
+html[data-foot-layout="both"] .setup-card .binding-help{font-size:10.5px;line-height:1.3}
+html[data-foot-layout="both"] .setup-card :is(.detail-disk-foot,.disk-type-picker,.inline-lean){grid-template-columns:minmax(0,1fr)!important}
+html[data-foot-layout="both"] .setup-card .detail-foot input,html[data-foot-layout="both"] .setup-card .detail-foot select{max-width:100%;min-width:0;box-sizing:border-box}
+/* 詳細入力の中の細かい欄も、横並びの時は縦に積む */
+html[data-foot-layout="both"] #setupCard :is(.detail-offset-grid,.heelcup-head,.heelcup-layout,.heelcup-values,.disk-type-picker){grid-template-columns:minmax(0,1fr)!important}
+html[data-foot-layout="both"] #setupCard .detail-offset-grid>label{grid-template-rows:auto var(--ui-field-height,44px)!important}
+html[data-foot-layout="both"] #setupCard .heelcup-origin{width:100%;max-width:100%}
+html[data-foot-layout="both"] #setupCard .detail-foot :is(input,select,button){max-width:100%;min-width:0;box-sizing:border-box}
+html[data-foot-layout="both"] #setupCard .heelcup-layout svg,html[data-foot-layout="both"] #setupCard .disk-preview svg{max-width:100%;height:auto}

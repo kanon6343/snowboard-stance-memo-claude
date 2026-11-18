@@ -1,7 +1,7 @@
 /* Release shell: bump RELEASE and every versioned index.html asset together. */
-const RELEASE = '1092';
-const APP_VERSION = '2.5.0';
-const RELEASE_NOTES = ["入力画面の並びをドラッグで変えられるようにしました（メニュー → 表示 → 入力画面の並びを変える）。", "左右の足を同時に表示できる設定を追加しました。"];
+const RELEASE = '1093';
+const APP_VERSION = '2.5.1';
+const RELEASE_NOTES = ["入力画面の並び替えを、ホーム画面のウィジェットのように長押しで始めて、まとまりをつかんで動かす形にしました。", "左右の足の同時表示を、スマホでも左右に並べる形にしました。"];
 const BASE = new URL('./', self.registration.scope);
 const CACHE_PREFIX = `snowboard-stance-claude:${BASE.href}:`;
 const CACHE_NAME = `${CACHE_PREFIX}${RELEASE}`;
