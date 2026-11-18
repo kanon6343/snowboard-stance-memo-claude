@@ -1,0 +1,44 @@
+/* Claude試作: 入力画面の並び替え・表示切り替え・左右の足の同時表示 */
+:root{--layout-bar-bg:#eef4f7;--layout-bar-line:#b9c8d1;--layout-lift:0 8px 22px rgba(10,40,60,.22)}
+:root[data-theme="dark"]{--layout-bar-bg:var(--night-raised,#26343f);--layout-bar-line:#4d6271;--layout-lift:0 8px 22px rgba(0,0,0,.5)}
+
+.layout-bar{display:none}
+.layout-block[data-off="true"]{display:none}
+.layout-hidden-notice{margin:0 0 10px;padding:8px 10px;border:1px solid var(--outdoor-amber-border,#8a3b04);border-radius:8px;font-size:13px;line-height:1.5;color:var(--outdoor-ink)}
+.layout-hidden-notice[hidden],.layout-toolbar[hidden]{display:none!important}
+
+/* 並び替えモード：中身をたたんで、行だけを並べる */
+.layout-editing .layout-block{display:block;margin:0 0 8px;border-radius:10px;transition:box-shadow .15s}
+.layout-editing .layout-block > :not(.layout-bar){display:none!important}
+.layout-editing .layout-bar{display:flex;align-items:center;gap:8px;min-height:52px;padding:4px 6px 4px 4px;background:var(--layout-bar-bg);border:1px solid var(--layout-bar-line);border-radius:10px;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
+.layout-editing .layout-block[data-off="true"] .layout-bar{opacity:.55;border-style:dashed}
+.layout-editing .layout-block.dragging{position:relative;z-index:3;box-shadow:var(--layout-lift)}
+.layout-editing .layout-block.dragging .layout-bar{cursor:grabbing}
+.layout-grip{flex:1;display:flex;align-items:center;gap:10px;min-height:44px;min-width:0;padding:0 8px;border:0;background:transparent;color:var(--outdoor-ink);font:inherit;font-size:15px;font-weight:600;text-align:left;cursor:inherit;touch-action:none}
+.layout-grip-icon{font-size:22px;line-height:1;color:var(--outdoor-muted)}
+.layout-name{min-width:0;overflow-wrap:anywhere}
+.layout-eye{flex:none;min-height:40px;min-width:72px;padding:0 10px;border:1px solid var(--outdoor-border);border-radius:999px;background:transparent;color:var(--outdoor-ink);font:inherit;font-size:13px}
+.layout-eye[aria-pressed="false"]{color:var(--outdoor-muted);border-style:dashed}
+.layout-fixed{flex:none;font-size:12px;color:var(--outdoor-muted);padding:0 8px}
+.layout-editing .editor-actions,.layout-editing .draft-status,.layout-editing .detail-retained,.layout-editing .history-edit-banner{display:none!important}
+
+.layout-toolbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:4;display:grid;gap:8px;margin:0 0 12px;padding:10px 12px;border:1px solid var(--layout-bar-line);border-radius:12px;background:var(--layout-bar-bg)}
+.layout-toolbar strong{font-size:15px;color:var(--outdoor-ink)}
+.layout-toolbar p{margin:2px 0 0;font-size:13px;line-height:1.5;color:var(--outdoor-muted)}
+.layout-toolbar-actions{display:flex;gap:8px;flex-wrap:wrap}
+.layout-toolbar-actions button{flex:1 1 8rem;min-height:44px;border:1px solid var(--outdoor-border);border-radius:8px;background:transparent;color:var(--outdoor-ink);font:inherit;font-size:14px}
+.layout-toolbar-actions .layout-done{background:var(--outdoor-blue);border-color:var(--outdoor-blue);color:#fff;font-weight:600}
+:root[data-theme="dark"] .layout-toolbar-actions .layout-done{color:#08202c}
+.layout-live{margin:0;font-size:12.5px;min-height:1em}
+.layout-grip:focus-visible,.layout-eye:focus-visible{outline:3px solid var(--outdoor-blue);outline-offset:2px}
+
+/* 左右の足を同時に表示 */
+html[data-foot-layout="both"] #footDock,html[data-foot-layout="both"] #footDockSentinel{display:none!important}
+html[data-foot-layout="both"] .setup-card .bindings{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+/* 横に並べるのは、ビス穴を押せる大きさが取れる幅だけ（スマホは上下に並べる） */
+@media (min-width:700px){html[data-foot-layout="both"] .setup-card .bindings{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+html[data-foot-layout="both"] .binding-panel{min-width:0;border:1px solid var(--layout-bar-line);border-radius:10px;padding:8px 6px}
+html[data-foot-layout="both"] .binding-panel::before{display:block;margin:0 0 4px;font-weight:700;font-size:14px;color:var(--outdoor-ink);text-align:center}
+html[data-foot-layout="both"] #leftFootPanel::before{content:"左足"}
+html[data-foot-layout="both"] #rightFootPanel::before{content:"右足"}
+@media (prefers-reduced-motion:reduce){.layout-editing .layout-block{transition:none}}

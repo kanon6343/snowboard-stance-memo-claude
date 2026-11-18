@@ -1,7 +1,7 @@
 /* Release shell: bump RELEASE and every versioned index.html asset together. */
-const RELEASE = '1091';
-const APP_VERSION = '2.4.3';
-const RELEASE_NOTES = ["Claude試作版のアイコンにClaudeのマークを追加し、正式版と見分けやすくしました。"];
+const RELEASE = '1092';
+const APP_VERSION = '2.5.0';
+const RELEASE_NOTES = ["入力画面の並びをドラッグで変えられるようにしました（メニュー → 表示 → 入力画面の並びを変える）。", "左右の足を同時に表示できる設定を追加しました。"];
 const BASE = new URL('./', self.registration.scope);
 const CACHE_PREFIX = `snowboard-stance-claude:${BASE.href}:`;
 const CACHE_NAME = `${CACHE_PREFIX}${RELEASE}`;
@@ -19,7 +19,7 @@ const SHELL = [
   `history-editor.js?v=${RELEASE}`,
   `draft-guard.js?v=${RELEASE}`, `history-tools.js?v=${RELEASE}`,
   `tutorial.css?v=${RELEASE}`, `tutorial.js?v=${RELEASE}`,
-  `foot-dock.js?v=${RELEASE}`,
+  `foot-dock.js?v=${RELEASE}`, `input-layout.js?v=${RELEASE}`, `input-layout.css?v=${RELEASE}`,
   `menu-navigation.js?v=${RELEASE}`, `menu-navigation.css?v=${RELEASE}`,
   `record-search.js?v=${RELEASE}`, `record-search.css?v=${RELEASE}`,
   `view-navigation.js?v=${RELEASE}`, `view-navigation.css?v=${RELEASE}`,
