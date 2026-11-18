@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  pages: write     # GITHUB_TOKEN での push では Pages が自動で作り直されないので、下で明示的に頼む
 
 concurrency:
   group: snow-report
@@ -25,6 +26,7 @@ jobs:
       - name: 雪山レポートを作る
         run: python -B tools/yukiyama.py --out snow --back ../
       - name: 変わっていればコミット
+        id: commit
         run: |
           git config user.name "snow-report-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -35,4 +37,10 @@ jobs:
             git commit -m "雪山レポートを更新 ($(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M'))"
             git pull --rebase
             git push
+            echo "pushed=1" >> "$GITHUB_OUTPUT"
           fi
+      - name: Pages を作り直す（公開ページへ反映）
+        if: steps.commit.outputs.pushed == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X POST "repos/${{ github.repository }}/pages/builds"

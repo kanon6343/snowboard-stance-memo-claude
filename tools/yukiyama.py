@@ -10,13 +10,14 @@ import datetime as dt
 import html
 import json
 import math
+import re
 import statistics
 import sys
 import time
 import urllib.request
 from pathlib import Path
 
-VERSION = "v00.03.00"
+VERSION = "v00.03.01"
 ARGS = argparse.ArgumentParser(description="雪山レポート")
 ARGS.add_argument("--out", default="snow", help="resorts.json があり、報告を書き出すフォルダ")
 ARGS.add_argument("--back", default="", help="戻るリンクの行き先（例 ../ でスタンスメモへ）")
@@ -46,7 +47,19 @@ def get_json(url, tries=3):
 def jma_observed():
     """積雪を測っているアメダスの、いまの積雪と24時間の増減"""
     latest = dt.datetime.fromisoformat(open_text("https://www.jma.go.jp/bosai/amedas/data/latest_time.txt").strip())
-    now_map = get_json(f"https://www.jma.go.jp/bosai/amedas/data/map/{latest:%Y%m%d%H%M%S}.json")
+    # 積雪は毎正時にしか入らない（10分ごとの地図には snow が無いことがある）。積雪の入った時刻まで戻って探す
+    cand = [latest] + [latest.replace(minute=0, second=0) - dt.timedelta(hours=h) for h in range(0, 7)]
+    now_map = None
+    for t in dict.fromkeys(cand):
+        try:
+            m = get_json(f"https://www.jma.go.jp/bosai/amedas/data/map/{t:%Y%m%d%H%M%S}.json", tries=2)
+        except Exception:  # noqa: BLE001
+            continue
+        if sum(1 for v in m.values() if "snow" in v) >= 50:
+            latest, now_map = t, m
+            break
+    if now_map is None:
+        raise RuntimeError("積雪の入った観測時刻が見つかりません（最新から6時間）")
     before = latest - dt.timedelta(hours=24)
     try:
         old_map = get_json(f"https://www.jma.go.jp/bosai/amedas/data/map/{before:%Y%m%d%H%M%S}.json")
@@ -102,12 +115,12 @@ def forecast(resort, days=7):
         per_day = {}
         for d in dates:
             idx = [i for i, t in enumerate(h["time"]) if t.startswith(d)]
-            sums = []
+            sums = {}   # メンバー名 → その日の合計（欠測の日があっても、期間合計で別メンバーと混ざらないよう名前で持つ）
             for k in snow_keys:
                 vals = [h[k][i] for i in idx]
-                if any(v is None for v in vals):
+                if not vals or any(v is None for v in vals):
                     continue
-                sums.append(sum(vals))
+                sums[k] = sum(vals)
             highs, lows = [], []
             for k in temp_keys:
                 vals = [h[k][i] for i in idx if h[k][i] is not None]
@@ -115,7 +128,8 @@ def forecast(resort, days=7):
                     highs.append(max(vals))
                     lows.append(min(vals))
             if sums:
-                per_day[d] = {"members": len(sums), "snow_med": q(sums, .5), "snow_p10": q(sums, .1), "snow_p90": q(sums, .9),
+                v = list(sums.values())
+                per_day[d] = {"members": len(v), "snow_med": q(v, .5), "snow_p10": q(v, .1), "snow_p90": q(v, .9),
                               "tmax": q(highs, .5) if highs else None, "tmin": q(lows, .5) if lows else None, "sums": sums}
         out[label] = per_day
     return out
@@ -139,7 +153,7 @@ def combine(fc, dates):
             x = per_day.get(d)
             if not x:
                 continue
-            members += x["sums"]
+            members += list(x["sums"].values())
             meds.append(x["snow_med"])
             if x["tmax"] is not None:
                 tmax.append(x["tmax"])
@@ -157,11 +171,11 @@ def total(fc, dates):
     """期間の合計（メンバーごとに足してから中央値と幅を出す）"""
     members = []
     for per_day in fc.values():
-        n = min((len(per_day[d]["sums"]) for d in dates if d in per_day), default=0)
-        if n == 0 or any(d not in per_day for d in dates):
+        if not dates or any(d not in per_day for d in dates):
             continue
-        for i in range(n):
-            members.append(sum(per_day[d]["sums"][i] for d in dates))
+        keys = set.intersection(*[set(per_day[d]["sums"]) for d in dates])   # 全日そろっているメンバーだけ
+        for k in sorted(keys):
+            members.append(sum(per_day[d]["sums"][k] for d in dates))
     return {"med": q(members, .5), "p10": q(members, .1), "p90": q(members, .9)} if members else None
 
 
@@ -231,8 +245,13 @@ def build(results, obs_time, now):
                             f'<span class="warn">取得できず</span></summary><p class="warn">データを取れませんでした: {html.escape(r["error"])}</p></details>')
                 continue
             o = r.get("obs")
-            obs = (f'近くの観測点 {html.escape(o["name"])}（{o["km"]}km・標高{o["alt"]}m）: 積雪 <b>{fmt(o["depth"])}</b>'
-                   + (f'（24時間で {o["change24"]:+.0f}cm）' if o.get("change24") is not None else "")) if o else "近く（40km以内）に積雪の観測点がありません"
+            if r.get("obs_failed"):
+                obs = '<span class="warn">気象庁の実測を取得できませんでした（次の更新で再取得します）</span>'
+            elif o:
+                obs = (f'近くの観測点 {html.escape(o["name"])}（{o["km"]}km・標高{o["alt"]}m）: 積雪 <b>{fmt(o["depth"])}</b>'
+                       + (f'（24時間で {o["change24"]:+.0f}cm）' if o.get("change24") is not None else ""))
+            else:
+                obs = "近く（40km以内）に積雪の観測点がありません"
             days = "".join(
                 f'<tr><td>{daylabel(d["date"])}</td><td class="num"><b>{d["med"]:.0f}</b><span class="sub"> ({d["p10"]:.0f}〜{d["p90"]:.0f})</span></td>'
                 f'<td class="num">{fmt(d["tmin"], "°", 0)} / {fmt(d["tmax"], "°", 0)}</td><td class="sub">{quality(d["tmax"]) if d["med"] >= 1 else ""}'
@@ -259,7 +278,7 @@ def build(results, obs_time, now):
 <section id="top">
 {f'<p class="back"><a href="{html.escape(OPT.back)}">← スタンスメモに戻る</a></p>' if OPT.back else ""}
 <h1>❄ 雪山レポート <small>{VERSION}</small></h1>
-<p class="sub">作成 {now:%Y/%m/%d %H:%M} ・ 実測 {obs_time:%m/%d %H:%M} 時点 ・ <a href="archive/">過去の報告</a></p>
+<p class="sub">作成 {now:%Y/%m/%d %H:%M} ・ {f"実測 {obs_time:%m/%d %H:%M} 時点" if obs_time else '<span class="warn">実測は取得できず</span>'} ・ <a href="archive/">過去の報告</a></p>
 <div class="card summary"><h2>きょうのまとめ</h2>{"".join(f"<p>{html.escape(x)}</p>" for x in lines)}</div>
 </section>
 <section id="fav"><h2>★ お気に入り</h2><div id="favList"><p class="sub">スキー場を開いて「☆ お気に入りに追加」を押すと、ここに並びます（この端末に保存）。</p></div></section>
@@ -346,7 +365,7 @@ def main():
         obs_time, stations = jma_observed()
     except Exception as e:  # noqa: BLE001
         print(f"  気象庁の取得に失敗: {e}")
-        obs_time, stations = now, []
+        obs_time, stations = None, None   # 「観測点なし」と区別する
     results = []
     for r in resorts:
         print(f"予報を取得: {r['name']}")
@@ -356,15 +375,22 @@ def main():
             dates = sorted(set().union(*[set(v) for v in fc.values()]))
             item["days"] = combine(fc, dates)
             item["week"] = total(fc, dates)
-            sat = next((d for d in dates if dt.date.fromisoformat(d).weekday() == 5 and d > now.date().isoformat()), None)
-            if sat:
-                sun = (dt.date.fromisoformat(sat) + dt.timedelta(days=1)).isoformat()
-                span = [d for d in (sat, sun) if d in dates]
+            if not item["week"] or not item["days"]:
+                raise RuntimeError("有効な予報がありませんでした")
+            # 今日が土・日ならその週末（日曜なら日曜だけ）、平日なら次の土日
+            first = next((d for d in dates if d >= now.date().isoformat() and dt.date.fromisoformat(d).weekday() >= 5), None)
+            if first:
+                span = [first] + ([(dt.date.fromisoformat(first) + dt.timedelta(days=1)).isoformat()]
+                                  if dt.date.fromisoformat(first).weekday() == 5 else [])
+                span = [d for d in span if d in dates]
                 item["weekend"] = total(fc, span)
                 item["weekend_label"] = "・".join(daylabel(d) for d in span)
         except Exception as e:  # noqa: BLE001
             item["error"] = str(e)[:200]
-        item["obs"] = nearest(r, stations)
+            item.pop("week", None)
+            item.pop("weekend", None)
+        item["obs"] = nearest(r, stations) if stations is not None else None
+        item["obs_failed"] = stations is None
         results.append(item)
         time.sleep(1)   # 無料のサービスなので、ゆっくり取りに行く
     SITE.mkdir(exist_ok=True)
@@ -372,9 +398,12 @@ def main():
     DATA.mkdir(exist_ok=True)
     page = build(results, obs_time, now)
     (SITE / "index.html").write_text(page, encoding="utf-8")
-    (SITE / "archive" / f"{now:%Y-%m-%d}.html").write_text(page.replace('href="archive/"', 'href="./"'), encoding="utf-8")
+    old = page.replace('href="archive/"', 'href="./"')   # 過去の報告ページは1段深いので、戻る先もずらす
+    if OPT.back and not re.match(r"^(/|[a-z]+:)", OPT.back):
+        old = old.replace(f'<p class="back"><a href="{html.escape(OPT.back)}">', f'<p class="back"><a href="../{html.escape(OPT.back)}">', 1)
+    (SITE / "archive" / f"{now:%Y-%m-%d}.html").write_text(old, encoding="utf-8")
     archive_index()
-    (DATA / f"{now:%Y-%m-%d_%H}.json").write_text(json.dumps({"made": now.isoformat(), "observed": obs_time.isoformat(), "resorts": results},
+    (DATA / f"{now:%Y-%m-%d_%H}.json").write_text(json.dumps({"made": now.isoformat(), "observed": obs_time.isoformat() if obs_time else None, "resorts": results},
                                                           ensure_ascii=False, indent=1), encoding="utf-8")
     bad = [r["name"] for r in results if r.get("error")]
     print(f"できました: {SITE / 'index.html'}" + (f"（取れなかった所: {'、'.join(bad)}）" if bad else ""))
