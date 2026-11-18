@@ -1,7 +1,7 @@
 /* Release shell: bump RELEASE and every versioned index.html asset together. */
-const RELEASE = '1090';
-const APP_VERSION = '2.4.2';
-const RELEASE_NOTES = ["メニューの「データ」で、バックアップのすぐ下から正式版のリンクを共有・コピーできるようにしました。"];
+const RELEASE = '1091';
+const APP_VERSION = '2.4.3';
+const RELEASE_NOTES = ["Claude試作版のアイコンにClaudeのマークを追加し、正式版と見分けやすくしました。"];
 const BASE = new URL('./', self.registration.scope);
 const CACHE_PREFIX = `snowboard-stance-claude:${BASE.href}:`;
 const CACHE_NAME = `${CACHE_PREFIX}${RELEASE}`;
@@ -23,8 +23,8 @@ const SHELL = [
   `menu-navigation.js?v=${RELEASE}`, `menu-navigation.css?v=${RELEASE}`,
   `record-search.js?v=${RELEASE}`, `record-search.css?v=${RELEASE}`,
   `view-navigation.js?v=${RELEASE}`, `view-navigation.css?v=${RELEASE}`,
-  'icons/icon-192.png', 'icons/icon-512.png',
-  'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png',
+  'icons/icon-claude-192.png', 'icons/icon-claude-512.png',
+  'icons/icon-claude-maskable-512.png', 'icons/apple-touch-icon-claude.png',
 ].map(path => new URL(path, BASE).href);
 const SHELL_URLS = new Set(SHELL);
 self.addEventListener('install', event => {
