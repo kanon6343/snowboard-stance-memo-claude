@@ -16,7 +16,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-VERSION = "v00.02.00"
+VERSION = "v00.03.00"
 ARGS = argparse.ArgumentParser(description="雪山レポート")
 ARGS.add_argument("--out", default="snow", help="resorts.json があり、報告を書き出すフォルダ")
 ARGS.add_argument("--back", default="", help="戻るリンクの行き先（例 ../ でスタンスメモへ）")
@@ -209,20 +209,26 @@ def build(results, obs_time, now):
     if unsure:
         lines.append("予報の幅が大きく、まだ読みにくい所: " + "、".join(unsure[:6]) + "。")
 
+    sid = {r["name"]: f"s{i}" for i, r in enumerate(results)}   # スキー場ごとの飛び先（英数字の ID）
+    regions = list(dict.fromkeys(r["region"] for r in results))
+    rid = {g: f"r{i}" for i, g in enumerate(regions)}
+
     def rank_rows(items, key, label):
         out = []
         for i, r in enumerate(items[:5], 1):
             t = r[key]
-            out.append(f'<tr><td>{i}</td><td><a href="#{html.escape(r["name"])}">{html.escape(r["name"])}</a><span class="sub"> {r["region"]}</span></td>'
+            out.append(f'<tr><td>{i}</td><td><a class="jump" href="#{sid[r["name"]]}">{html.escape(r["name"])}</a><span class="sub"> {html.escape(r["region"])}</span></td>'
                        f'<td class="num"><b>{t["med"]:.0f}</b><span class="sub"> ({t["p10"]:.0f}〜{t["p90"]:.0f})</span></td></tr>')
-        return f'<table class="rank"><tr><th></th><th>スキー場</th><th class="num">{label}</th></tr>{"".join(out)}</table>'
+        return f'<div class="tbl"><table class="rank"><tr><th></th><th>スキー場</th><th class="num">{label}</th></tr>{"".join(out)}</table></div>'
 
-    cards = []
-    for region in dict.fromkeys(r["region"] for r in results):
-        cards.append(f"<h2>{html.escape(region)}</h2>")
+    sections = []
+    for region in regions:
+        rows = []
         for r in [x for x in results if x["region"] == region]:
+            name = html.escape(r["name"])
             if r.get("error"):
-                cards.append(f'<div class="card" id="{html.escape(r["name"])}"><h3>{html.escape(r["name"])}</h3><p class="warn">データを取れませんでした: {html.escape(r["error"])}</p></div>')
+                rows.append(f'<details class="spot" id="{sid[r["name"]]}" data-name="{name}"><summary><span class="nm">{name}</span>'
+                            f'<span class="warn">取得できず</span></summary><p class="warn">データを取れませんでした: {html.escape(r["error"])}</p></details>')
                 continue
             o = r.get("obs")
             obs = (f'近くの観測点 {html.escape(o["name"])}（{o["km"]}km・標高{o["alt"]}m）: 積雪 <b>{fmt(o["depth"])}</b>'
@@ -231,28 +237,42 @@ def build(results, obs_time, now):
                 f'<tr><td>{daylabel(d["date"])}</td><td class="num"><b>{d["med"]:.0f}</b><span class="sub"> ({d["p10"]:.0f}〜{d["p90"]:.0f})</span></td>'
                 f'<td class="num">{fmt(d["tmin"], "°", 0)} / {fmt(d["tmax"], "°", 0)}</td><td class="sub">{quality(d["tmax"]) if d["med"] >= 1 else ""}'
                 f'{" ・モデル差あり" if d["model_gap"] >= 10 else ""}</td></tr>' for d in r["days"])
-            w = r["week"]
-            cards.append(
-                f'<div class="card" id="{html.escape(r["name"])}"><h3>{html.escape(r["name"])} <span class="sub">標高{r["elev"]}mで計算</span></h3>'
-                f'<p>{obs}</p><p>7日間の新雪: <b>{w["med"]:.0f}cm</b> <span class="sub">（{w["p10"]:.0f}〜{w["p90"]:.0f}cm）'
-                f'{" ・予報の幅が大きい" if uncertain(w) else ""}</span></p>'
-                f'<table><tr><th>日</th><th class="num">新雪 cm</th><th class="num">最低/最高</th><th>雪質の目安</th></tr>{days}</table></div>')
+            w, we = r["week"], r.get("weekend")
+            depth = fmt(o["depth"]) if o else "—"
+            flag = '<span class="pill">読みにくい</span>' if uncertain(w) else ""
+            rows.append(
+                f'<details class="spot" id="{sid[r["name"]]}" data-name="{name}" data-week="{w["med"]:.0f}" data-weekend="{(we or {}).get("med", 0) or 0:.0f}" data-depth="{html.escape(depth)}">'
+                f'<summary><span class="nm">{name}{flag}</span>'
+                f'<span class="v"><b>{w["med"]:.0f}</b><small>cm</small><span class="sub">7日</span></span>'
+                f'<span class="v2 sub">週末 {(we or {}).get("med", 0) or 0:.0f}cm ・ 積雪 {html.escape(depth)}</span></summary>'
+                f'<div class="more"><p class="sub">標高{r["elev"]}mで計算 ・ 7日の幅 {w["p10"]:.0f}〜{w["p90"]:.0f}cm</p><p>{obs}</p>'
+                f'<div class="tbl"><table><tr><th>日</th><th class="num">新雪 cm</th><th class="num">最低/最高</th><th>雪質の目安</th></tr>{days}</table></div>'
+                f'<button type="button" class="fav" data-id="{sid[r["name"]]}" aria-pressed="false">☆ お気に入りに追加</button></div></details>')
+        sections.append(f'<section class="region" id="{rid[region]}"><h2>{html.escape(region)}</h2>{"".join(rows)}</section>')
+
+    chips = ['<a href="#top">まとめ</a>', '<a href="#fav">★</a>'] + [f'<a href="#{rid[g]}">{html.escape(g)}</a>' for g in regions]
 
     return f"""<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>雪山レポート {now:%m/%d}</title><style>{CSS}</style></head><body><main>
+<title>雪山レポート {now:%m/%d}</title><style>{CSS}</style></head><body>
+<nav class="chips" aria-label="地域へ移動"><div class="chips-in">{"".join(chips)}</div></nav>
+<main>
+<section id="top">
 {f'<p class="back"><a href="{html.escape(OPT.back)}">← スタンスメモに戻る</a></p>' if OPT.back else ""}
 <h1>❄ 雪山レポート <small>{VERSION}</small></h1>
 <p class="sub">作成 {now:%Y/%m/%d %H:%M} ・ 実測 {obs_time:%m/%d %H:%M} 時点 ・ <a href="archive/">過去の報告</a></p>
 <div class="card summary"><h2>きょうのまとめ</h2>{"".join(f"<p>{html.escape(x)}</p>" for x in lines)}</div>
+</section>
+<section id="fav"><h2>★ お気に入り</h2><div id="favList"><p class="sub">スキー場を開いて「☆ お気に入りに追加」を押すと、ここに並びます（この端末に保存）。</p></div></section>
 <h2>7日間の新雪ランキング</h2>{rank_rows(ranked, "week", "新雪 cm（幅）")}
 {f'<h2>週末（{weekend[0]["weekend_label"]}）の新雪</h2>' + rank_rows(weekend, "weekend", "新雪 cm（幅）") if weekend else ""}
-{"".join(cards)}
+<p class="sub">各スキー場の行を押すと、日ごとの予報が開きます。</p>
+{"".join(sections)}
 <div class="card note"><h2>読み方</h2>
 <p>新雪は、ECMWF（ヨーロッパ）と GFS（アメリカ）の予報を、条件を少しずつ変えて合わせて約80通り計算した結果の<b>真ん中の値</b>です。かっこ内は、少なめ〜多めの幅（10%〜90%）。幅が大きい時は、まだ読みにくいという意味です。</p>
 <p>予報はスキー場の位置と標高で計算しています。山の上と下では大きく違います。積雪の実測は、近くの気象庁アメダスの値で、ゲレンデの積雪ではありません。雪質は最高気温からの目安です。</p>
 <p>出かける前は、スキー場の公式発表と道路情報を必ず確かめてください。</p></div>
 <p class="src">データ: <a href="https://www.jma.go.jp/">気象庁</a>（アメダスの積雪）を加工して作成 ・ 予報: <a href="https://open-meteo.com/">Open-Meteo</a>（CC BY 4.0、ECMWF・NOAA のデータ）</p>
-</main></body></html>"""
+</main><script>{JS}</script></body></html>"""
 
 
 CSS = """:root{--bg:#f4f7fa;--panel:#fff;--text:#1d2630;--sub:#6a7682;--line:#dde4ea;--accent:#2b6cb0;--warn:#b7791f}
@@ -264,7 +284,58 @@ h2{font-size:18px;margin:26px 0 8px}h3{font-size:16px;margin:0 0 6px}a{color:var
 .summary p{margin:4px 0}.summary h2,.note h2{margin-top:0}.warn{color:var(--warn)}
 table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
 th{color:var(--sub);font-weight:normal;font-size:12.5px}.num{text-align:right}.rank{background:var(--panel);border:1px solid var(--line);border-radius:10px}
-.src{color:var(--sub);font-size:12px}.back{margin:0 0 6px;font-size:14px}"""
+.src{color:var(--sub);font-size:12px}.back{margin:0 0 6px;font-size:14px}
+.chips{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.chips-in{max-width:820px;margin:0 auto;display:flex;gap:6px;overflow-x:auto;padding:8px 16px;scrollbar-width:none}
+.chips-in::-webkit-scrollbar{display:none}
+.chips a{flex:none;text-decoration:none;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 13px;font-size:14px;white-space:nowrap}
+.chips a.on{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+section[id],details.spot{scroll-margin-top:56px}
+.tbl{overflow-x:auto}
+.spot{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin:8px 0}
+.spot summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:10px 14px;align-items:center}
+.spot summary::-webkit-details-marker{display:none}
+.spot summary .nm{font-weight:600;min-width:0}
+.spot summary .v{text-align:right;white-space:nowrap}.spot summary .v b{font-size:20px}.spot summary .v small{margin-left:1px}.spot summary .v .sub{margin-left:6px}
+.spot summary .v2{grid-column:1/-1}
+.spot[open] summary{border-bottom:1px solid var(--line)}
+.spot .more{padding:8px 14px 12px}.spot .more p{margin:4px 0 8px}
+.pill{display:inline-block;margin-left:6px;font-size:11px;font-weight:normal;color:var(--warn);border:1px solid var(--warn);border-radius:999px;padding:0 6px;vertical-align:2px}
+.fav{margin-top:10px;font:inherit;font-size:14px;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
+.fav[aria-pressed="true"]{border-color:var(--warn);color:var(--warn)}
+.favrow{display:flex;justify-content:space-between;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:8px 0;text-decoration:none;color:var(--text)}
+.favrow b{font-size:18px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}"""
+
+JS = """(function(){
+var KEY='claude:snow-favs-v1',favs=[];
+try{favs=JSON.parse(localStorage.getItem(KEY)||'[]')||[]}catch(e){favs=[]}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(favs))}catch(e){}}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function drawFavs(){
+  var box=document.getElementById('favList'),rows=[];
+  favs.forEach(function(id){var d=document.getElementById(id);if(!d)return;
+    rows.push('<a class="favrow jump" href="#'+id+'"><span>'+esc(d.dataset.name)+'<br><span class="sub">週末 '+esc(d.dataset.weekend||'0')+'cm ・ 積雪 '+esc(d.dataset.depth||'—')+'</span></span><span><b>'+esc(d.dataset.week||'—')+'</b>cm <span class="sub">7日</span></span></a>')});
+  if(rows.length)box.innerHTML=rows.join('');
+  document.querySelectorAll('.fav').forEach(function(b){var on=favs.indexOf(b.dataset.id)>=0;b.setAttribute('aria-pressed',on);b.textContent=on?'★ お気に入りから外す':'☆ お気に入りに追加'});
+}
+document.addEventListener('click',function(e){
+  var b=e.target.closest('.fav');
+  if(b){var i=favs.indexOf(b.dataset.id);if(i>=0)favs.splice(i,1);else favs.push(b.dataset.id);save();
+    if(!favs.length)document.getElementById('favList').innerHTML='<p class="sub">スキー場を開いて「☆ お気に入りに追加」を押すと、ここに並びます（この端末に保存）。</p>';drawFavs();return}
+  var a=e.target.closest('a.jump');
+  if(a){var d=document.getElementById(a.getAttribute('href').slice(1));if(d&&d.tagName==='DETAILS')d.open=true}
+});
+function openHash(){var d=location.hash&&document.getElementById(location.hash.slice(1));if(d&&d.tagName==='DETAILS'){d.open=true;d.scrollIntoView()}}
+window.addEventListener('hashchange',openHash);openHash();
+drawFavs();
+var chips=[].slice.call(document.querySelectorAll('.chips a')),secs=chips.map(function(a){return document.getElementById(a.getAttribute('href').slice(1))});
+function mark(){var y=70,cur=0;secs.forEach(function(s,i){if(s&&s.getBoundingClientRect().top<=y)cur=i});
+  chips.forEach(function(a,i){a.classList.toggle('on',i===cur)});
+  var on=chips[cur];if(on&&on.parentNode.scrollTo){var p=on.parentNode;var x=on.offsetLeft-p.clientWidth/2+on.clientWidth/2;p.scrollTo({left:x})}}
+var t;window.addEventListener('scroll',function(){clearTimeout(t);t=setTimeout(mark,60)},{passive:true});mark();
+})();"""
 
 
 def main():
