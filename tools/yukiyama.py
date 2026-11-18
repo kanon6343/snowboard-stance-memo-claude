@@ -16,7 +16,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-VERSION = "v00.01.00"
+VERSION = "v00.02.00"
 ARGS = argparse.ArgumentParser(description="雪山レポート")
 ARGS.add_argument("--out", default="snow", help="resorts.json があり、報告を書き出すフォルダ")
 ARGS.add_argument("--back", default="", help="戻るリンクの行き先（例 ../ でスタンスメモへ）")
@@ -303,7 +303,7 @@ def main():
     (SITE / "index.html").write_text(page, encoding="utf-8")
     (SITE / "archive" / f"{now:%Y-%m-%d}.html").write_text(page.replace('href="archive/"', 'href="./"'), encoding="utf-8")
     archive_index()
-    (DATA / f"{now:%Y-%m-%d}.json").write_text(json.dumps({"made": now.isoformat(), "observed": obs_time.isoformat(), "resorts": results},
+    (DATA / f"{now:%Y-%m-%d_%H}.json").write_text(json.dumps({"made": now.isoformat(), "observed": obs_time.isoformat(), "resorts": results},
                                                           ensure_ascii=False, indent=1), encoding="utf-8")
     bad = [r["name"] for r in results if r.get("error")]
     print(f"できました: {SITE / 'index.html'}" + (f"（取れなかった所: {'、'.join(bad)}）" if bad else ""))

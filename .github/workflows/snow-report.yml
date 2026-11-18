@@ -1,9 +1,9 @@
-# 雪山レポート（Claude 試作）: 毎朝 5:30 JST に snow/ を作り直してコミットする。AI は使わない。
+# 雪山レポート（Claude 試作）: 1日4回（5:00・11:00・17:00・23:00 JST） snow/ を作り直してコミットする。AI は使わない。
 name: snow-report
 
 on:
   schedule:
-    - cron: "30 20 * * *"   # UTC 20:30 = 日本時間 5:30（GitHub の混雑で数分〜数十分遅れることがある）
+    - cron: "0 2,8,14,20 * * *"   # UTC 2・8・14・20時 = 日本時間 11・17・23・5時（GitHub の混雑で数分〜数十分遅れることがある）
   workflow_dispatch: {}      # 手動でも動かせる
 
 permissions:
