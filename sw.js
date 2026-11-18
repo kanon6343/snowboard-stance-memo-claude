@@ -3,7 +3,7 @@ const RELEASE = '1090';
 const APP_VERSION = '2.4.2';
 const RELEASE_NOTES = ["メニューの「データ」で、バックアップのすぐ下から正式版のリンクを共有・コピーできるようにしました。"];
 const BASE = new URL('./', self.registration.scope);
-const CACHE_PREFIX = `snowboard-stance-main:${BASE.href}:`;
+const CACHE_PREFIX = `snowboard-stance-claude:${BASE.href}:`;
 const CACHE_NAME = `${CACHE_PREFIX}${RELEASE}`;
 const SHELL = [
   'index.html', `style.css?v=${RELEASE}`, `outdoor.css?v=${RELEASE}`,

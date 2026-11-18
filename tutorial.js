@@ -56,7 +56,7 @@ const TutorialData = (() => {
 
 const AppTutorial = (() => {
   const byId=id=>document.getElementById(id),dialog=byId('tutorialDialog'),card=byId('tutorialCard'),spot=byId('tutorialSpotlight');
-  const key='main:tutorial-v1';let preference={},state=null,index=0,kind='basic',frame=0,pendingReveal=false;
+  const key='claude:tutorial-v1';let preference={},state=null,index=0,kind='basic',frame=0,pendingReveal=false;
   try{const saved=JSON.parse(localStorage.getItem(key)||'{}');if(saved&&typeof saved==='object'&&!Array.isArray(saved))preference={dismissed:saved.dismissed===true,basic:saved.basic===true,detail:saved.detail===true};}catch{}
   byId('tutorialInvite').hidden=preference.dismissed===true;
   function persist(){try{localStorage.setItem(key,JSON.stringify(preference));}catch{showToast('使い方ガイドの表示設定を保存できませんでした。案内はそのまま使えます。','info');}}

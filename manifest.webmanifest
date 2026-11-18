@@ -1,6 +1,6 @@
 {
-  "name": "スタンスメモ",
-  "short_name": "スタンスメモ",
+  "name": "スタンスメモ（Claude試作）",
+  "short_name": "スタンスメモC",
   "description": "スノーボードのスタンスとギアの設定、滑走メモを記録します。",
   "lang": "ja",
   "start_url": "./",

@@ -1,0 +1,38 @@
+# 雪山レポート（Claude 試作）: 毎朝 5:30 JST に snow/ を作り直してコミットする。AI は使わない。
+name: snow-report
+
+on:
+  schedule:
+    - cron: "30 20 * * *"   # UTC 20:30 = 日本時間 5:30（GitHub の混雑で数分〜数十分遅れることがある）
+  workflow_dispatch: {}      # 手動でも動かせる
+
+permissions:
+  contents: write
+
+concurrency:
+  group: snow-report
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 雪山レポートを作る
+        run: python -B tools/yukiyama.py --out snow --back ../
+      - name: 変わっていればコミット
+        run: |
+          git config user.name "snow-report-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add snow
+          if git diff --cached --quiet; then
+            echo "変更なし"
+          else
+            git commit -m "雪山レポートを更新 ($(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M'))"
+            git pull --rebase
+            git push
+          fi

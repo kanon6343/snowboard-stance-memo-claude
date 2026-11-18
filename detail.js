@@ -98,7 +98,7 @@ const DetailData = (() => {
 })();
 
 const DetailEditor = (() => {
-  const byId=id=>document.getElementById(id), modeKey='main:input-mode-v1',filterKey='main:shape-filter-v1';
+  const byId=id=>document.getElementById(id), modeKey='claude:input-mode-v1',filterKey='claude:shape-filter-v1';
   const bindings={shape:'detailShape',nose:'detailNose',bend:'detailBend',boardNote:'detailBoardNote',bindingName:'detailBindingName',forwardLeanLeft:'detailLeanLeft',forwardLeanRight:'detailLeanRight',note:'detailNote'};
   const heelcupRecorded={left:false,right:false};
   const heelcupOrigins={left:'',right:''};

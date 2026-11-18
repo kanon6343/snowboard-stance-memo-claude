@@ -1,6 +1,6 @@
 // Theme preferences are isolated from memo data, import/export and other app versions.
 (() => {
-  const prefix = 'main:';
+  const prefix = 'claude:';
   const key = `${prefix}color-theme-v1`;
   const valid = value => ['light', 'dark', 'auto'].includes(value);
   let preference = 'light';

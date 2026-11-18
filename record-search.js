@@ -39,7 +39,7 @@ const RecordSearchData = (() => {
 })();
 
 const RecordSearch = (() => {
-  const byId=id=>document.getElementById(id),storageKey='main:record-filters-v1',mode=()=>document.documentElement.dataset.inputMode;
+  const byId=id=>document.getElementById(id),storageKey='claude:record-filters-v1',mode=()=>document.documentElement.dataset.inputMode;
   let state=RecordSearchData.normalize({}),timer=null,candidateSignature='';
   try{state=RecordSearchData.normalize(JSON.parse(localStorage.getItem(storageKey)||'{}'));}catch{}
   const width=document.createElement('div');width.className='record-width-filter';

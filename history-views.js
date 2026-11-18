@@ -48,7 +48,7 @@ const DetailHistoryData = (() => {
 })();
 
 const DetailHistoryView = (() => {
-  const key='main:history-layout-v1',valid=['summary','matrix','grouped'];
+  const key='claude:history-layout-v1',valid=['summary','matrix','grouped'];
   const controls=document.getElementById('detailHistoryControls'),group=document.getElementById('detailHistoryLayout'),status=document.getElementById('detailHistoryStatus'),history=document.getElementById('history');
   let layout='summary';try{const saved=localStorage.getItem(key);if(valid.includes(saved))layout=saved;}catch{}
   const active=()=>document.documentElement.dataset.inputMode==='detail';

@@ -10,7 +10,7 @@
   <link rel="icon" href="icons/icon-192.png" type="image/png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <meta name="description" content="スノーボードの板・ビンディング・スタンスと滑走メモを記録。簡易入力と詳細入力、履歴、バックアップに対応。" />
-  <title>スタンスメモ</title>
+  <title>スタンスメモ（Claude試作）</title>
   <link rel="stylesheet" href="style.css?v=1090">
   <link rel="stylesheet" href="outdoor.css?v=1090">
   <link rel="stylesheet" href="theme.css?v=1090">
@@ -304,6 +304,11 @@
 
   </div>
   <div id="menuPageDisplay" class="menu-page" role="tabpanel" aria-labelledby="menuTabDisplay" tabindex="0">
+  <section class="menu-card" id="snowReportCard" aria-labelledby="snowReportHeading">
+    <h3 id="snowReportHeading">❄ 雪山情報</h3>
+    <p class="menu-note">全国のスキー場の積雪と、7日先までの新雪の予報。毎朝5:30ごろ更新します。</p>
+    <a id="openSnowReport" class="menu-action menu-primary" href="snow/" style="display:block;text-decoration:none;text-align:center">雪山レポートを開く<span class="menu-action-note">気象庁・Open-Meteo のデータ</span></a>
+  </section>
   <section class="menu-card">
     <h3>表示・操作</h3>
     <div class="menu-position-row"><label class="menu-position-label" for="inputMode">入力モード</label><select id="inputMode" class="menu-side-select"><option value="simple">簡易入力</option><option value="detail">詳細入力</option></select></div>

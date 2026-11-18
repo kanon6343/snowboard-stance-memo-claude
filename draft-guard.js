@@ -1,6 +1,6 @@
 /* Device-local unfinished input; never writes the saved-history key. */
 const DraftGuard = (() => {
-  const key='main:editor-draft-v1',byId=id=>document.getElementById(id);
+  const key='claude:editor-draft-v1',byId=id=>document.getElementById(id);
   const panel=byId('setupCard'),recovery=byId('draftRecovery'),status=byId('draftStatus');
   let baseline=signature(captureEditorDraft()),pending=null,timer=null,restoring=false,ownedRaw=null;
   function signature(editor){const {mode,...data}=editor;return JSON.stringify(data);}
