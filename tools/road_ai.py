@@ -15,7 +15,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-VERSION = "v00.01.00"
+VERSION = "v00.01.01"
 AP = argparse.ArgumentParser()
 AP.add_argument("--data", default="snow/latest.json")
 AP.add_argument("--out", default="snow/road_ai.json")
@@ -69,6 +69,12 @@ def check(text, fact_text):
     for w in BANNED:
         if w in t:
             return f"使わない言葉「{w}」"
+    for name in re.findall(r"[^\s、。：「」（）]{1,6}(?:注意報|警報)", t):
+        if not any(name.endswith(w) and w in fact_text for w in re.findall(r"[^\s、。：・]{1,6}(?:注意報|警報)", fact_text)):
+            return f"事実にない警報・注意報「{name}」"
+    for w in ("今夜", "今朝", "明け方", "追いついていない", "出ています" if "発表中" not in fact_text and "今出ている" not in fact_text else "\0"):
+        if w in t and w not in fact_text:
+            return f"事実にない言い方「{w}」"
     extra = numbers(t) - numbers(fact_text) - {"1", "2"}
     if extra:
         return f"事実にない数字 {sorted(extra)}"
