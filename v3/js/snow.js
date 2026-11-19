@@ -258,7 +258,8 @@ export function createSnowView(app) {
 }
 
 // 道路の規制は、公式サイトへ案内する（チェーン規制・通行止めを配る公開 API はないため、アプリでは取得しない）。
-// 一般道：国交省「道路情報提供システム」の現在の通行規制の地図を、スキー場の位置を中心に開く。
+// 一般道：国交省「道路情報提供システム」。利用条件で「リンクは原則トップページへ」「無断転載不可」なので、
+// トップページへのリンクだけにし、内容の取得・転載はしない。
 // 高速道路：地域ごとの NEXCO の交通情報（東日本＝ドラぷら、中日本・西日本＝アイハイウェイ）。
 const NEXCO_EAST = ['ドラぷら（NEXCO東日本）', 'https://www.driveplaza.com/traffic/', '高速道路'];
 const IHIGHWAY = ['アイハイウェイ（NEXCO中日本・西日本）', 'https://ihighway.jp/', '高速道路'];
@@ -267,9 +268,8 @@ const EXPRESSWAY = {
   長野: [NEXCO_EAST, IHIGHWAY], 岐阜: [IHIGHWAY], 福井: [IHIGHWAY], 滋賀: [IHIGHWAY], 関西: [IHIGHWAY], 中国: [IHIGHWAY], 愛媛: [IHIGHWAY],
 };
 export function roadLinks(s) {
-  const map = `https://www.road-info-prvs.mlit.go.jp/roadinfo/content.php?mode=sp&lang=jp&page=10&table=0&zoom=10&ido=${s.lat.toFixed(4)}&keido=${s.lon.toFixed(4)}`;
   return [
-    ['周辺の通行規制の地図（国土交通省）', map, '冬期通行止め・チェーン規制・雪の通行止め'],
+    ['道路情報提供システム（国土交通省）', 'https://www.road-info-prvs.mlit.go.jp/roadinfo/', '「通行規制」から地域を選ぶ。冬期通行止め・チェーン規制・雪の通行止め'],
     ...(EXPRESSWAY[s.region] || [NEXCO_EAST, IHIGHWAY]),
     ['日本道路交通情報センター（JARTIC）', 'https://www.jartic.or.jp/', '都道府県道を含む全国'],
   ];
