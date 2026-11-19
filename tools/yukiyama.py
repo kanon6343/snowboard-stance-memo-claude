@@ -17,7 +17,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-VERSION = "v00.04.00"
+VERSION = "v00.05.00"
 ARGS = argparse.ArgumentParser(description="雪山レポート")
 ARGS.add_argument("--out", default="snow", help="resorts.json があり、報告を書き出すフォルダ")
 ARGS.add_argument("--back", default="", help="戻るリンクの行き先（例 ../ でスタンスメモへ）")
@@ -197,6 +197,94 @@ def jma_week(offices):
             out[(office, a["area"]["code"])] = {"area": a["area"]["name"], "city": t.get("area", {}).get("name", ""),
                                                 "office": w.get("publishingOffice", ""), "report": w.get("reportDatetime", ""), "days": days}
     return out
+
+
+# ---------------------------------------------------------------- 日中の天気（アプリ用 latest.json）
+DAY_FIELDS = ["temperature_2m", "rain", "showers", "snowfall", "wind_speed_10m", "wind_gusts_10m", "cloud_cover", "visibility", "weather_code"]
+
+
+def daytime_all(resorts, days=7):
+    """全地点の 1 時間ごとの予報をまとめて取り、日ごとに「日中（9〜15時）」と「朝までの新雪（前日9時〜当日9時）」にまとめる。
+    にわか（showers）は、その時間の気温が +1°C を超える時だけ雨に数える（氷点下の雪を雨と数えないため）。"""
+    q = (f"latitude={','.join(str(r['lat']) for r in resorts)}&longitude={','.join(str(r['lon']) for r in resorts)}"
+         f"&elevation={','.join(str(r['elev']) for r in resorts)}&hourly={','.join(DAY_FIELDS)}"
+         f"&timezone=Asia%2FTokyo&forecast_days={days}&past_days=1&wind_speed_unit=ms")
+    raw = get_json("https://api.open-meteo.com/v1/forecast?" + q, tries=2)
+    raw = raw if isinstance(raw, list) else [raw]
+    out = {}
+    for r, d in zip(resorts, raw):
+        h = d["hourly"]
+        rows = list(zip(*[h.get(k) or [None] * len(h["time"]) for k in ["time"] + DAY_FIELDS]))
+        per = {}
+        for t, temp, rain, shw, snow, wind, gust, cloud, vis, code in rows:
+            date, hour = t[:10], int(t[11:13])
+            day = per.setdefault(date, {"wind": [], "gust": [], "rain": 0.0, "cloud": [], "vis": [], "codes": [], "temp": [], "n": 0})
+            if 9 <= hour <= 15:
+                day["n"] += 1
+                if wind is not None: day["wind"].append(wind)
+                if gust is not None: day["gust"].append(gust)
+                if cloud is not None: day["cloud"].append(cloud)
+                if vis is not None: day["vis"].append(vis)
+                if code is not None: day["codes"].append(code)
+                if temp is not None: day["temp"].append(temp)
+                day["rain"] += (rain or 0) + ((shw or 0) if temp is not None and temp > 1 else 0)
+        # 朝までの新雪：前日9時〜当日9時（滑る日の朝の雪）
+        snow_by = {}
+        times = [x[0] for x in rows]
+        snows = [x[4] or 0 for x in rows]
+        for i, t in enumerate(times):
+            if t[11:13] == "09":
+                snow_by[t[:10]] = round(sum(snows[max(0, i - 24):i]), 1)
+        res = {}
+        for date, v in per.items():
+            if v["n"] < 4:
+                continue
+            res[date] = {"wind": round(max(v["wind"]), 1) if v["wind"] else None,
+                         "gust": round(max(v["gust"]), 1) if v["gust"] else None,
+                         "rain": round(v["rain"], 1),
+                         "cloud": round(sum(v["cloud"]) / len(v["cloud"])) if v["cloud"] else None,
+                         "lowvis": sum(1 for x in v["vis"] if x < 1000),
+                         "code": max(set(v["codes"]), key=v["codes"].count) if v["codes"] else None,
+                         "tmax": round(max(v["temp"]), 1) if v["temp"] else None,
+                         "tmin": round(min(v["temp"]), 1) if v["temp"] else None,
+                         "snow_am": snow_by.get(date)}
+        out[r["id"]] = res
+    return out
+
+
+def app_json(results, obs_time, now, daymap):
+    """アプリ（Claude 版・チャッピー版）が読む最新データ。地点 ID はチャッピー版と共通"""
+    def r1(v):
+        return None if v is None else round(v, 1)
+    spots = []
+    for r in results:
+        sp = {k: r.get(k) for k in ("id", "name", "region", "lat", "lon", "elev", "official", "jma_office")}
+        if r.get("error"):
+            sp["error"] = r["error"]
+        o = r.get("obs")
+        sp["obs"] = ({"name": o["name"], "depth": o.get("depth"), "change24": o.get("change24"), "km": o.get("km"), "alt": o.get("alt")}
+                     if o else None)
+        sp["obs_failed"] = bool(r.get("obs_failed"))
+        for key in ("week", "weekend"):
+            if r.get(key):
+                sp[key] = {k: r1(r[key][k]) for k in ("med", "p10", "p90")}
+        sp["weekend_label"] = r.get("weekend_label")
+        week = (r.get("jma_week") or {}).get("days", {})
+        cmp = r.get("cmp") or {}
+        dm = daymap.get(r["id"], {})
+        days = []
+        for d in r.get("days") or []:
+            date = d["date"]
+            models = cmp.get(date) or {}
+            days.append({"date": date, "snow": {"med": r1(d["med"]), "p10": r1(d["p10"]), "p90": r1(d["p90"])},
+                         "tmax": r1(d.get("tmax")), "tmin": r1(d.get("tmin")),
+                         "models": {k: r1(v) for k, v in models.items()},
+                         "agree": agreement(list(models.values())) if models else "",
+                         "day": dm.get(date), "jma": week.get(date)})
+        sp["days"] = days
+        spots.append(sp)
+    return {"version": 1, "made": now.isoformat(timespec="minutes"), "observed": obs_time.isoformat() if obs_time else None,
+            "generator": f"yukiyama.py {VERSION}", "spots": spots}
 
 
 def wicon(code):
@@ -511,6 +599,12 @@ def main():
         item["obs_failed"] = stations is None
         results.append(item)
         time.sleep(1)   # 無料のサービスなので、ゆっくり取りに行く
+    print("日中の天気をまとめて取得…")
+    try:
+        daymap = daytime_all(resorts)
+    except Exception as e:  # noqa: BLE001
+        print(f"  日中の天気を取れず: {e}")
+        daymap = {}
     SITE.mkdir(exist_ok=True)
     (SITE / "archive").mkdir(exist_ok=True)
     DATA.mkdir(exist_ok=True)
@@ -522,6 +616,7 @@ def main():
         old = old.replace(f'<p class="back"><a href="{html.escape(OPT.back)}">', f'<p class="back"><a href="../{html.escape(OPT.back)}">', 1)
     (SITE / "archive" / f"{now:%Y-%m-%d}.html").write_text(old, encoding="utf-8")
     archive_index()
+    (SITE / "latest.json").write_text(json.dumps(app_json(results, obs_time, now, daymap), ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     # 予報の記録は 5・11・17・23時の枠ごとに1つだけ（毎時動いても増えすぎないように。遅れて動いても枠の最初の1回で残す）
     slot = max(now.replace(hour=h, minute=0, second=0, microsecond=0) - dt.timedelta(days=d)
                for h in RECORD_HOURS for d in (0, 1)

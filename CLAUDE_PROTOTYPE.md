@@ -29,3 +29,22 @@
 - 外したまとまりに入力が残っている時は、入力画面の上に知らせる。記録のデータ形式は変えていない。
 - 使い方ガイドの間は、最初の並び・全表示に戻す。
 - 設定はこの端末だけ（キー `claude:input-layout-v1`）。正式版に入れる時は `main:` に変える。
+
+## v3（画面ごと作り直した試作 / 2026-11-19）
+- 場所：`v3/`（公開 URL …/snowboard-stance-memo-claude/v3/）。v2.5 はルートにそのまま残す。
+- 作り：ビルドなしの ES モジュール。
+  - js/store.js：データ。記録の形は v2 と同じ dataVersion 2。
+  - js/record.js：記録する画面。
+  - js/binding.js：板の図。
+  - js/history.js：履歴。
+  - js/snow.js：雪山。
+  - js/settings.js：設定。
+  - js/main.js：起動・タブ・PWA。
+  - js/ui.js：部品。
+- 保存キーは `claude3:`。ほかの版（claude: / main: / haru-detail: / 無接頭辞）は読むだけで、設定の「ほかの版から引き継ぐ」で足す（同じ ID・同じ日時は足さない）。
+- バックアップは v2 と同じ JSON 形式（app: snowboard-stance-memo, dataVersion 2）。どの版でも読める。
+- 雪山はハイブリッド。tools/yukiyama.py（v00.05.00）が毎時 `snow/latest.json` を書き出し、v3 はそれを読む。スマホからは天気の API を呼ばない。
+  - 中身：実測・アンサンブルの中央値と幅・モデル比較・気象庁週間・日中の風雨。地点 ID はチャッピー版の spot-catalog と共通。
+  - 6時間より古いデータでは、おすすめを出さない。
+- snow/resorts.json は24地点。チャッピー版と同じ ID で、official（公式サイト）付き。
+- まだ入れていない（次の段階）：入力画面の並び替え（ウィジェット風）、使い方ガイド、下書きの複数保存。

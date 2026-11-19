@@ -1,7 +1,7 @@
 /* Release shell: bump RELEASE and every versioned index.html asset together. */
-const RELEASE = '1095';
-const APP_VERSION = '2.5.3';
-const RELEASE_NOTES = ["アプリを軽くしました。アイコン画像を約1/9にして、更新のたびに取り直す量を約400KB減らしました。","重なっていた処理（履歴の読み書きなど）を1か所にまとめ、使っていない古いスタイルを消しました。見た目と使い方は変わりません。"];
+const RELEASE = '1096';
+const APP_VERSION = '2.5.4';
+const RELEASE_NOTES = ["メニューに、画面ごと作り直した新しい版（v3 試作）へのリンクを足しました。"];
 const BASE = new URL('./', self.registration.scope);
 const CACHE_PREFIX = `snowboard-stance-claude:${BASE.href}:`;
 const CACHE_NAME = `${CACHE_PREFIX}${RELEASE}`;

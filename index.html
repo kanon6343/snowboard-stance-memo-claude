@@ -11,22 +11,22 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon-claude.png" />
   <meta name="description" content="スノーボードの板・ビンディング・スタンスと滑走メモを記録。簡易入力と詳細入力、履歴、バックアップに対応。" />
   <title>スタンスメモ（Claude試作）</title>
-  <link rel="stylesheet" href="style.css?v=1095">
-  <link rel="stylesheet" href="outdoor.css?v=1095">
-  <link rel="stylesheet" href="theme.css?v=1095">
-  <link rel="stylesheet" href="pwa.css?v=1095">
-  <link rel="stylesheet" href="board-suggestions.css?v=1095">
-  <link rel="stylesheet" href="detail.css?v=1095">
-  <link rel="stylesheet" href="history-views.css?v=1095">
-  <link rel="stylesheet" href="menu-ui.css?v=1095">
-  <link rel="stylesheet" href="tutorial.css?v=1095">
-  <link rel="stylesheet" href="menu-navigation.css?v=1095">
-  <link rel="stylesheet" href="record-search.css?v=1095">
-  <link rel="stylesheet" href="view-navigation.css?v=1095">
-  <link rel="stylesheet" href="ui-consistency.css?v=1095">
-  <link rel="stylesheet" href="input-layout.css?v=1095">
-  <script src="theme.js?v=1095"></script>
-  <script src="pwa.js?v=1095" defer></script>
+  <link rel="stylesheet" href="style.css?v=1096">
+  <link rel="stylesheet" href="outdoor.css?v=1096">
+  <link rel="stylesheet" href="theme.css?v=1096">
+  <link rel="stylesheet" href="pwa.css?v=1096">
+  <link rel="stylesheet" href="board-suggestions.css?v=1096">
+  <link rel="stylesheet" href="detail.css?v=1096">
+  <link rel="stylesheet" href="history-views.css?v=1096">
+  <link rel="stylesheet" href="menu-ui.css?v=1096">
+  <link rel="stylesheet" href="tutorial.css?v=1096">
+  <link rel="stylesheet" href="menu-navigation.css?v=1096">
+  <link rel="stylesheet" href="record-search.css?v=1096">
+  <link rel="stylesheet" href="view-navigation.css?v=1096">
+  <link rel="stylesheet" href="ui-consistency.css?v=1096">
+  <link rel="stylesheet" href="input-layout.css?v=1096">
+  <script src="theme.js?v=1096"></script>
+  <script src="pwa.js?v=1096" defer></script>
 </head>
 <body data-menu-side="left">
 
@@ -305,6 +305,11 @@
 
   </div>
   <div id="menuPageDisplay" class="menu-page" role="tabpanel" aria-labelledby="menuTabDisplay" tabindex="0">
+  <section class="menu-card" id="v3Card" aria-labelledby="v3Heading">
+    <h3 id="v3Heading">✨ 作り直した新しい版（v3 試作）</h3>
+    <p class="menu-note">Claude が画面ごと作り直した版です。記録はこの版と別に保存し、設定の「ほかの版から引き継ぐ」で読み込めます（この版の記録は消えません）。</p>
+    <a class="menu-action menu-primary" href="v3/" style="display:block;text-decoration:none;text-align:center">v3 を開く</a>
+  </section>
   <section class="menu-card" id="snowReportCard" aria-labelledby="snowReportHeading">
     <h3 id="snowReportHeading">❄ 雪山情報</h3>
     <p class="menu-note">全国のスキー場の積雪と、7日先までの新雪の予報。毎時更新します。</p>
@@ -353,8 +358,8 @@
       <p class="menu-note">Android・PC：Chrome／Edgeのメニューから「アプリをインストール」または「ホーム画面に追加」。iPhone／iPad：Safariの共有メニューから「ホーム画面に追加」を選びます。名称は端末によって異なります。</p>
     </details>
     <p id="offlineStatus" class="menu-note" role="status">オフラインで開く準備を確認しています。</p>
-    <div class="thumb-version-row"><span>現在のバージョン</span><strong id="appVersion">v2.5.3</strong></div>
-    <details id="currentReleaseNotes" class="release-notes"><summary>v2.5.3 の更新内容</summary><ul><li>アプリを軽くしました。アイコン画像を約1/9にして、更新のたびに取り直す量を約400KB減らしました。</li><li>重なっていた処理（履歴の読み書きなど）を1か所にまとめ、使っていない古いスタイルを消しました。見た目と使い方は変わりません。</li></ul></details>
+    <div class="thumb-version-row"><span>現在のバージョン</span><strong id="appVersion">v2.5.4</strong></div>
+    <details id="currentReleaseNotes" class="release-notes"><summary>v2.5.4 の更新内容</summary><ul><li>メニューに、画面ごと作り直した新しい版（v3 試作）へのリンクを足しました。</li></ul></details>
     <button id="checkAppUpdateBtn" type="button" class="menu-action">最新版を確認</button>
     <div id="appUpdateReady" class="app-update-ready" hidden>
       <p id="appUpdateTarget" class="menu-note" role="status"></p>
@@ -476,22 +481,22 @@
   <p>お気に入りの記録です。編集内容は保存前にもう一度確認できます。</p>
   <div class="history-confirm-actions"><button id="cancelFavoriteEdit" type="button" autofocus>キャンセル</button><button id="confirmFavoriteEdit" type="button">編集する</button></div>
 </dialog>
-<script src="common.js?v=1095"></script>
-<script src="detail.js?v=1095"></script>
-<script src="history-views.js?v=1095"></script>
-<script src="script.js?v=1095"></script>
-<script src="board-suggestions.js?v=1095"></script>
-<script src="menu-ui.js?v=1095"></script>
-<script src="menu-navigation.js?v=1095"></script>
-<script src="board-shape-history.js?v=1095"></script>
-<script src="history-stats.js?v=1095"></script>
-<script src="history-editor.js?v=1095"></script>
-<script src="draft-guard.js?v=1095"></script>
-<script src="history-tools.js?v=1095"></script>
-<script src="record-search.js?v=1095"></script>
-<script src="foot-dock.js?v=1095"></script>
-<script src="input-layout.js?v=1095"></script>
-<script src="view-navigation.js?v=1095"></script>
+<script src="common.js?v=1096"></script>
+<script src="detail.js?v=1096"></script>
+<script src="history-views.js?v=1096"></script>
+<script src="script.js?v=1096"></script>
+<script src="board-suggestions.js?v=1096"></script>
+<script src="menu-ui.js?v=1096"></script>
+<script src="menu-navigation.js?v=1096"></script>
+<script src="board-shape-history.js?v=1096"></script>
+<script src="history-stats.js?v=1096"></script>
+<script src="history-editor.js?v=1096"></script>
+<script src="draft-guard.js?v=1096"></script>
+<script src="history-tools.js?v=1096"></script>
+<script src="record-search.js?v=1096"></script>
+<script src="foot-dock.js?v=1096"></script>
+<script src="input-layout.js?v=1096"></script>
+<script src="view-navigation.js?v=1096"></script>
 
 <dialog id="tutorialDialog" class="tutorial-dialog" aria-labelledby="tutorialTitle" aria-describedby="tutorialText">
   <div id="tutorialShade" class="tutorial-shade" aria-hidden="true"></div>
@@ -503,7 +508,7 @@
     <footer><button id="skipTutorial" type="button">スキップ</button><div><button id="previousTutorial" type="button">戻る</button><button id="nextTutorial" type="button">次へ</button></div></footer>
   </section>
 </dialog>
-<script src="tutorial.js?v=1095"></script>
+<script src="tutorial.js?v=1096"></script>
 
 <div id="toast"></div>
   
