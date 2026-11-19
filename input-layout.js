@@ -18,10 +18,18 @@ const InputLayout = (() => {
   ];
   const DEFAULT = BLOCKS.map(b => b.id);
   const info = id => BLOCKS.find(b => b.id === id);
+  // 左右の足の中身（左右で同じ順番）
+  const PARTS = [
+    {id: 'angle', label: '角度・ディスク', nodes: ['.side-row']},
+    {id: 'detail', label: 'ディスクの詳細', detail: true, nodes: ['.detail-foot']},
+    {id: 'holes', label: 'ビス穴・推奨位置', nodes: ['.binding-heading', '.binding-help', '.holes']},
+  ];
+  const PART_DEFAULT = PARTS.map(p => p.id);
+  const partInfo = id => PARTS.find(p => p.id === id);
   const byId = id => document.getElementById(id);
   const reduced = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
   const INTERACTIVE = 'input,select,textarea,button,a,label,summary,[role="tab"],[contenteditable],.hole,.ref-slot,.chip,.board-suggestions';
-  let settings = {order: DEFAULT.slice(), off: [], feet: 'tabs'};
+  let settings = {order: DEFAULT.slice(), off: [], feet: 'tabs', footOrder: PART_DEFAULT.slice()};
   let editing = false, tutorial = false;
 
   function load() {
@@ -31,6 +39,7 @@ const InputLayout = (() => {
       if (Array.isArray(s.order)) settings.order = [...new Set(s.order.filter(id => DEFAULT.includes(id))), ...DEFAULT.filter(id => !s.order.includes(id))];
       if (Array.isArray(s.off)) settings.off = s.off.filter(id => DEFAULT.includes(id) && !info(id).fixed);
       if (s.feet === 'both') settings.feet = 'both';
+      if (Array.isArray(s.footOrder)) settings.footOrder = [...new Set(s.footOrder.filter(id => PART_DEFAULT.includes(id))), ...PART_DEFAULT.filter(id => !s.footOrder.includes(id))];
     } catch { /* 読めなければ最初の並び */ }
   }
   function save() {
@@ -61,6 +70,35 @@ const InputLayout = (() => {
   const anchor = document.createComment('input-layout-end');
   [...blocks.values()].at(-1)?.after(anchor);
 
+  // 左右の足の中身を、部品（part）に分ける
+  const panels = ['leftFootPanel', 'rightFootPanel'].map(byId).filter(Boolean);
+  const partAnchors = new Map();
+  for (const panel of panels) {
+    for (const p of PARTS) {
+      const nodes = p.nodes.map(sel => panel.querySelector(':scope > ' + sel)).filter(Boolean);
+      if (!nodes.length) continue;
+      const wrap = document.createElement('div');
+      wrap.className = 'foot-part';
+      wrap.dataset.part = p.id;
+      if (p.detail) wrap.dataset.detailOnly = 'true';
+      nodes[0].before(wrap);
+      const tag = document.createElement('span');
+      tag.className = 'foot-tag';
+      tag.textContent = p.label;
+      wrap.append(tag, ...nodes);
+    }
+    const a = document.createComment('foot-parts-end');
+    panel.append(a);
+    partAnchors.set(panel, a);
+  }
+  function applyFootOrder(order) {
+    for (const panel of panels) for (const id of order) {
+      const el = panel.querySelector(':scope > .foot-part[data-part="' + id + '"]');
+      if (el) partAnchors.get(panel).before(el);
+    }
+  }
+  const partOrderOf = panel => [...panel.querySelectorAll(':scope > .foot-part')].map(el => el.dataset.part);
+
   const tray = document.createElement('div');
   tray.className = 'layout-tray';
   tray.hidden = true;
@@ -85,6 +123,7 @@ const InputLayout = (() => {
     const order = tutorial ? DEFAULT : settings.order;
     for (const id of order) { const el = blocks.get(id); if (el) anchor.before(el); }
     for (const [id, el] of blocks) el.dataset.off = String(!tutorial && settings.off.includes(id));
+    applyFootOrder(tutorial ? PART_DEFAULT : settings.footOrder);
     drawTray();
     applyFeet();
     checkHidden();
@@ -165,7 +204,15 @@ const InputLayout = (() => {
     toolbar.hidden = false;
     tray.hidden = false;
     notice.hidden = true;
-    blocks.forEach(el => { el.querySelector('.layout-content').inert = true; el.tabIndex = 0; el.setAttribute('aria-label', info(el.dataset.block).label + '。上下の矢印キーで移動'); });
+    blocks.forEach(el => {
+      const content = el.querySelector('.layout-content');
+      if (el.dataset.block === 'feet') {
+        // 足のまとまりは、中の部品だけ動かせるようにする（部品の中身は触れない）
+        content.querySelectorAll('#footDock, #footDockSentinel, .foot-part > :not(.foot-tag)').forEach(n => { n.inert = true; });
+        content.querySelectorAll('.foot-part').forEach(p => { p.tabIndex = 0; p.setAttribute('aria-label', '足の中の' + partInfo(p.dataset.part).label + '。上下の矢印キーで移動（左右とも同じ順番）'); });
+      } else content.inert = true;
+      el.tabIndex = 0; el.setAttribute('aria-label', info(el.dataset.block).label + '。上下の矢印キーで移動');
+    });
     drawTray();
     try { navigator.vibrate?.(12); } catch { /* 振動できない端末 */ }
     requestAnimationFrame(() => card.scrollIntoView({block: 'start', behavior: reduced() ? 'auto' : 'smooth'}));
@@ -182,7 +229,10 @@ const InputLayout = (() => {
       el.querySelector('.layout-content').inert = false; el.removeAttribute('tabindex'); el.removeAttribute('aria-label');
       el.style.transform = ''; el.style.transition = ''; delete el.dataset.dy;   // 動きの途中の位置を残さない
     });
+    card.querySelectorAll('[inert]').forEach(n => { if (n.closest('.layout-block')) n.inert = false; });
+    card.querySelectorAll('.foot-part').forEach(p => { p.removeAttribute('tabindex'); p.removeAttribute('aria-label'); p.style.transform = ''; delete p.dataset.vdy; p.classList.remove('dragging'); });
     settings.order = [...card.querySelectorAll(':scope > .layout-block')].map(el => el.dataset.block);
+    if (panels[0]) settings.footOrder = partOrderOf(panels[0]);
     const ok = save();
     const st = byId('inputLayoutStatus');
     if (st) st.textContent = ok ? '並びを保存しました（この端末に記憶）。' : '並びを保存できませんでした。この端末の保存領域を確認してください。';
@@ -228,13 +278,16 @@ const InputLayout = (() => {
   let drag = null, hold = null;
   card.addEventListener('pointerdown', e => {
     if (!editing || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
-    const el = e.target.closest('.layout-block');
+    const part = e.target.closest('.foot-part');
+    const el = part || e.target.closest('.layout-block');
     if (!el || el.dataset.off === 'true' || e.target.closest('.layout-remove')) return;
     e.stopPropagation();   // 入力・履歴の左右スワイプにしない
     const begin = () => {
       hold = null;
       try { el.setPointerCapture(e.pointerId); } catch { /* 取れなくても動かせる */ }
-      drag = {el, id: e.pointerId, y: lastY, start: lastY, raf: 0};
+      drag = part
+        ? {kind: 'part', el, id: e.pointerId, y: lastY, y0: lastY, natural0: el.getBoundingClientRect().top, raf: 0}
+        : {kind: 'tile', el, id: e.pointerId, y: lastY, start: lastY, raf: 0};
       el.classList.add('dragging');
       try { navigator.vibrate?.(8); } catch { /* なし */ }
     };
@@ -246,7 +299,30 @@ const InputLayout = (() => {
   // つかんでいる間はページをスクロールさせない
   document.addEventListener('touchmove', e => { if (drag) e.preventDefault(); }, {passive: false});
 
+  // 足の中の部品：同じ足の中で並び替え（離した時にもう片方の足も同じ順番にする）
+  function placePart(clientY) {
+    const {el} = drag, panel = el.parentElement;
+    const z = (el.getBoundingClientRect().height / el.offsetHeight) || 1;   // タイルは縮小表示（zoom）なので見た目の倍率
+    const vis = parseFloat(el.dataset.vdy) || 0;
+    const others = [...panel.querySelectorAll(':scope > .foot-part')].filter(x => x !== el && x.getClientRects().length);
+    let target = null;
+    for (const other of others) {
+      const r = other.getBoundingClientRect();
+      if (clientY < r.top + r.height / 2) { target = other; break; }
+    }
+    const next = target || partAnchors.get(panel);
+    if (el.nextSibling !== next) { next.before(el); announcePart(el); }
+    const natural = el.getBoundingClientRect().top - vis;   // 動かす前の位置（並び直した後の）
+    const v = drag.natural0 + (clientY - drag.y0) - natural;
+    el.dataset.vdy = String(v);
+    el.style.transform = 'translateY(' + (v / z) + 'px)';
+  }
+  function announcePart(el) {
+    const list = [...el.parentElement.querySelectorAll(':scope > .foot-part')].filter(x => x.getClientRects().length), i = list.indexOf(el);
+    byId('layoutLive').textContent = '足の中の' + partInfo(el.dataset.part).label + '：' + (i + 1) + '番目 / ' + list.length + '（左右とも同じ）';
+  }
   function place(clientY) {
+    if (drag.kind === 'part') { placePart(clientY); return; }
     // 位置は offsetTop（動き中の transform に左右されない）で比べる。カードが基準（position:relative）
     const {el} = drag;
     const cardTop = card.getBoundingClientRect().top;
@@ -272,7 +348,7 @@ const InputLayout = (() => {
     else if (y > innerHeight - edge) v = Math.ceil((y - (innerHeight - edge)) / 5);
     if (v) {
       const s0 = scrollY; scrollBy(0, v); const ds = scrollY - s0;
-      if (ds) { drag.start -= ds; place(drag.y); }
+      if (ds) { if (drag.kind === 'part') drag.natural0 -= ds; else drag.start -= ds; place(drag.y); }
     }
     drag.raf = requestAnimationFrame(autoScroll);
   }
@@ -292,9 +368,16 @@ const InputLayout = (() => {
     if (hold && (!e || e.pointerId === hold.id)) { clearTimeout(hold.timer); hold = null; }
     if (!drag || (e && e.pointerId !== drag.id)) return;
     cancelAnimationFrame(drag.raf);
-    const {el} = drag;
+    const {el, kind} = drag;
     drag = null;
     el.classList.remove('dragging');
+    if (kind === 'part') {
+      delete el.dataset.vdy;
+      el.style.transform = '';
+      applyFootOrder(partOrderOf(el.parentElement));   // もう片方の足も同じ順番に
+      announcePart(el);
+      return;
+    }
     delete el.dataset.dy;
     el.style.transition = reduced() ? 'none' : 'transform .2s ease';
     el.style.transform = '';
@@ -308,6 +391,17 @@ const InputLayout = (() => {
   card.addEventListener('keydown', e => {
     if (!editing) return;
     if (e.key === 'Escape') { e.preventDefault(); finish(); byId('editInputLayout')?.focus(); return; }
+    const part = e.target.closest?.('.foot-part');
+    if (part && e.target === part && ['ArrowUp', 'ArrowDown'].includes(e.key)) {
+      e.preventDefault();
+      const list = [...part.parentElement.querySelectorAll(':scope > .foot-part')].filter(x => x.getClientRects().length), i = list.indexOf(part);
+      if (e.key === 'ArrowUp' && i > 0) list[i - 1].before(part);
+      if (e.key === 'ArrowDown' && i < list.length - 1) list[i + 1].after(part);
+      applyFootOrder(partOrderOf(part.parentElement));
+      part.focus();
+      announcePart(part);
+      return;
+    }
     const el = e.target.closest?.('.layout-block');
     if (!el || e.target !== el || !['ArrowUp', 'ArrowDown'].includes(e.key)) return;
     e.preventDefault();
@@ -343,6 +437,7 @@ const InputLayout = (() => {
       animateMove(() => {
         settings.off = [];
         for (const id of DEFAULT) { const el = blocks.get(id); el.dataset.off = 'false'; anchor.before(el); }
+        applyFootOrder(PART_DEFAULT);
       });
       drawTray();
       byId('layoutLive').textContent = '最初の並びに戻しました。「完了」で保存します。';

@@ -15,7 +15,7 @@
 :root:not([data-input-mode="detail"]) .layout-editing .layout-block[data-detail-only="true"]::after{content:"詳細入力のときに表示されます";display:block;padding:4px 2px 2px;font-size:12px;color:var(--outdoor-muted)}
 .layout-editing .layout-tag{display:flex;align-items:center;position:absolute;top:4px;left:20px;right:10px;font-size:12px;font-weight:700;color:var(--outdoor-muted);pointer-events:none}
 .layout-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.layout-remove{pointer-events:auto;position:absolute;top:-16px;left:-18px;width:30px;height:30px;padding:0;border:2px solid var(--layout-tile-bg);border-radius:50%;background:var(--layout-badge);color:var(--layout-badge-ink);font:inherit;font-size:20px;font-weight:700;line-height:1;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.layout-remove{pointer-events:auto;position:absolute;top:-20px;left:-38px;width:30px;height:30px;padding:0;border:2px solid var(--layout-tile-bg);border-radius:50%;background:var(--layout-badge);color:var(--layout-badge-ink);font:inherit;font-size:20px;font-weight:700;line-height:1;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.25)}
 .layout-remove::after{content:"";position:absolute;inset:-8px}
 .layout-editing .layout-block.dragging{z-index:5;cursor:grabbing;box-shadow:var(--layout-lift)}
 .layout-editing .layout-block:focus-visible{outline:3px solid var(--outdoor-blue);outline-offset:2px}
@@ -72,3 +72,13 @@ html[data-foot-layout="both"] #setupCard .detail-offset-grid>label{grid-template
 html[data-foot-layout="both"] #setupCard .heelcup-origin{width:100%;max-width:100%}
 html[data-foot-layout="both"] #setupCard .detail-foot :is(input,select,button){max-width:100%;min-width:0;box-sizing:border-box}
 html[data-foot-layout="both"] #setupCard .heelcup-layout svg,html[data-foot-layout="both"] #setupCard .disk-preview svg{max-width:100%;height:auto}
+
+/* ---- 左右の足の中身（部品）。ふだんは並びに影響しない（display:contents） */
+.foot-part{display:contents}
+.foot-tag{display:none}
+.layout-editing .foot-part{display:block;position:relative;pointer-events:auto;margin:10px 0;padding:44px 10px 10px;border:3px dashed var(--layout-tile-line);border-radius:18px;background:var(--layout-tray-bg);cursor:grab;touch-action:pan-y}
+.layout-editing .foot-tag{display:block;position:absolute;top:8px;left:14px;right:14px;font-size:22px;font-weight:700;color:var(--outdoor-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+.layout-editing .foot-part.dragging{z-index:4;cursor:grabbing;border-style:solid;border-color:var(--outdoor-blue);box-shadow:var(--layout-lift)}
+.layout-editing .foot-part:focus-visible{outline:5px solid var(--outdoor-blue);outline-offset:3px}
+:root:not([data-input-mode="detail"]) .layout-editing .foot-part[data-detail-only="true"]::after{content:"詳細入力のときに表示";display:block;font-size:22px;color:var(--outdoor-muted)}
+.layout-editing .layout-block[data-block="feet"] .layout-tag::after{content:"中の部品もつかんで動かせます（左右とも同じ順番）";margin-left:8px;font-weight:400;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

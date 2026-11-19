@@ -1,7 +1,7 @@
 /* Release shell: bump RELEASE and every versioned index.html asset together. */
-const RELEASE = '1093';
-const APP_VERSION = '2.5.1';
-const RELEASE_NOTES = ["入力画面の並び替えを、ホーム画面のウィジェットのように長押しで始めて、まとまりをつかんで動かす形にしました。", "左右の足の同時表示を、スマホでも左右に並べる形にしました。"];
+const RELEASE = '1094';
+const APP_VERSION = '2.5.2';
+const RELEASE_NOTES = ["並び替えモードで、左右の足の中身（角度・ディスク／ディスクの詳細／ビス穴）も順番を変えられるようにしました。左右とも同じ順番になります。"];
 const BASE = new URL('./', self.registration.scope);
 const CACHE_PREFIX = `snowboard-stance-claude:${BASE.href}:`;
 const CACHE_NAME = `${CACHE_PREFIX}${RELEASE}`;
