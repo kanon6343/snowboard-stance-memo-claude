@@ -17,7 +17,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-VERSION = "v00.05.00"
+VERSION = "v00.06.00"
 ARGS = argparse.ArgumentParser(description="雪山レポート")
 ARGS.add_argument("--out", default="snow", help="resorts.json があり、報告を書き出すフォルダ")
 ARGS.add_argument("--back", default="", help="戻るリンクの行き先（例 ../ でスタンスメモへ）")
@@ -252,8 +252,63 @@ def daytime_all(resorts, days=7):
     return out
 
 
-def app_json(results, obs_time, now, daymap):
+# ---------------------------------------------------------------- 道路の注意（ルールで作る。規制情報そのものは扱わない）
+# 気象庁の警報・注意報コード（道路に関係するものだけ）。データは bosai/warning/data/r8/{府県}.json
+WARN_NAMES = {"02": "暴風雪警報", "06": "大雪警報", "32": "暴風雪特別警報", "36": "大雪特別警報",
+              "05": "暴風警報", "12": "大雪注意報", "13": "風雪注意報", "15": "強風注意報", "20": "濃霧注意報",
+              "22": "なだれ注意報", "23": "低温注意報", "25": "着氷注意報", "26": "着雪注意報"}
+WARN_HIGH = {"02", "06", "32", "36", "05"}
+
+
+def jma_warnings(offices):
+    """{区域コード(class20): {"names": [...], "time": 発表時刻}}。発表・継続中のものだけ（解除は除く）"""
+    out = {}
+    for office in dict.fromkeys(offices):
+        try:
+            reports = get_json(f"https://www.jma.go.jp/bosai/warning/data/r8/{office}.json", tries=2)
+        except Exception as e:  # noqa: BLE001
+            print(f"  警報・注意報を取れず {office}: {e}")
+            continue
+        for rep in reports if isinstance(reports, list) else [reports]:
+            for item in (rep.get("warning") or {}).get("class20Items", []):
+                slot = out.setdefault(item.get("areaCode"), {"codes": set(), "time": ""})
+                for k in item.get("kinds", []):
+                    if k.get("code") in WARN_NAMES and k.get("status") in ("発表", "継続"):
+                        slot["codes"].add(k["code"])
+                slot["time"] = max(slot["time"], rep.get("reportDatetime", ""))
+    return {a: {"codes": sorted(v["codes"]), "names": [WARN_NAMES[c] for c in sorted(v["codes"])], "time": v["time"]} for a, v in out.items()}
+
+
+def road_rules(day, prev_day, warn_codes=()):
+    """1日分の「道路の注意」。level 0=ふだんの冬道 1=注意 2=警戒。points は理由（短い文）"""
+    dd = (day or {}).get("day") or {}
+    pdd = (prev_day or {}).get("day") or {}
+    level, points = 0, []
+    def add(lv, text):
+        nonlocal level
+        level = max(level, lv)
+        points.append(text)
+    snow = dd.get("snow_am")
+    tmin, gust, rain = dd.get("tmin"), dd.get("gust"), dd.get("rain") or 0
+    if snow is not None and snow >= 20:
+        add(2, f"朝までに新雪{round(snow)}cm：除雪が追いつかず、チェーン規制や立ち往生のおそれ")
+    elif snow is not None and snow >= 5:
+        add(1, f"朝までに新雪{round(snow)}cm：圧雪路。車間を広く")
+    if gust is not None and gust >= 15 and ((snow or 0) >= 2 or ((day or {}).get("snow") or {}).get("med", 0) >= 2):
+        add(2 if gust >= 20 else 1, f"風雪（突風{round(gust)}m/s）：吹きだまり・視界不良")
+    wet = (snow or 0) > 0 or rain > 0 or (pdd.get("tmax") is not None and pdd["tmax"] > 1)
+    if tmin is not None and tmin <= -2 and wet:
+        add(1, f"{round(tmin)}°Cまで冷える：路面凍結（アイスバーン）に注意")
+    if rain >= 2 and tmin is not None and tmin <= 1:
+        add(1, "雨のあと冷える：凍結しやすい")
+    for c in warn_codes:
+        add(2 if c in WARN_HIGH else 1, f"{WARN_NAMES[c]}が出ている")
+    return {"level": level, "points": points}
+
+
+def app_json(results, obs_time, now, daymap, warnings=None):
     """アプリ（Claude 版・チャッピー版）が読む最新データ。地点 ID はチャッピー版と共通"""
+    warnings = warnings or {}
     def r1(v):
         return None if v is None else round(v, 1)
     spots = []
@@ -282,6 +337,15 @@ def app_json(results, obs_time, now, daymap):
                          "agree": agreement(list(models.values())) if models else "",
                          "day": dm.get(date), "jma": week.get(date)})
         sp["days"] = days
+        # 道路の注意（ルール）。警報・注意報は「今」のものなので、今日の分にだけ足す
+        w = warnings.get(r.get("jma_area20")) or {}
+        today = now.date().isoformat()
+        road_days = []
+        for i, d in enumerate(days):
+            if d["date"] < today:
+                continue
+            road_days.append({"date": d["date"], **road_rules(d, days[i - 1] if i else None, w.get("codes", []) if d["date"] == today else ())})
+        sp["road"] = {"warnings": w.get("names", []), "warn_time": w.get("time") or None, "days": road_days}
         spots.append(sp)
     return {"version": 1, "made": now.isoformat(timespec="minutes"), "observed": obs_time.isoformat() if obs_time else None,
             "generator": f"yukiyama.py {VERSION}", "spots": spots}
@@ -605,6 +669,8 @@ def main():
     except Exception as e:  # noqa: BLE001
         print(f"  日中の天気を取れず: {e}")
         daymap = {}
+    print("気象庁の警報・注意報を取得…")
+    warnings = jma_warnings([r["jma_office"] for r in resorts if r.get("jma_office")])
     SITE.mkdir(exist_ok=True)
     (SITE / "archive").mkdir(exist_ok=True)
     DATA.mkdir(exist_ok=True)
@@ -616,7 +682,7 @@ def main():
         old = old.replace(f'<p class="back"><a href="{html.escape(OPT.back)}">', f'<p class="back"><a href="../{html.escape(OPT.back)}">', 1)
     (SITE / "archive" / f"{now:%Y-%m-%d}.html").write_text(old, encoding="utf-8")
     archive_index()
-    (SITE / "latest.json").write_text(json.dumps(app_json(results, obs_time, now, daymap), ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    (SITE / "latest.json").write_text(json.dumps(app_json(results, obs_time, now, daymap, warnings), ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     # 予報の記録は 5・11・17・23時の枠ごとに1つだけ（毎時動いても増えすぎないように。遅れて動いても枠の最初の1回で残す）
     slot = max(now.replace(hour=h, minute=0, second=0, microsecond=0) - dt.timedelta(days=d)
                for h in RECORD_HOURS for d in (0, 1)

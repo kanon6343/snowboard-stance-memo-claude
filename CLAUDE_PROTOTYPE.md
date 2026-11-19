@@ -48,3 +48,13 @@
   - 6時間より古いデータでは、おすすめを出さない。
 - snow/resorts.json は24地点。チャッピー版と同じ ID で、official（公式サイト）付き。
 - まだ入れていない（次の段階）：入力画面の並び替え（ウィジェット風）、使い方ガイド、下書きの複数保存。
+
+## 道路の注意（ルール版と AI 版、v3.4.0 / 2026-11-19）
+- 規制情報（通行止め・チェーン規制の実況）は扱わない。国交省「道路情報提供システム」は無断転載不可で、リンクは原則トップページへ。v3 はトップページへのリンクだけにした。
+- ルール版：tools/yukiyama.py v00.06.00 が latest.json の各地点に `road` を書く。
+  - `warnings`：気象庁の警報・注意報。bosai/warning/data/r8/{府県}.json の class20、`jma_area20` は resorts.json にある。
+  - `days`：日ごとの level（0〜2）と points。新雪・突風・冷え込み・雨のあとの冷え込み・警報から作る。
+- AI 版：.github/workflows/road-ai.yml。3時間ごと。
+  - GitHub Actions のマシンで Ollama + qwen2.5:3b を動かし、tools/road_ai.py がルール版の事実だけを渡して文章にする。
+  - 文は機械的に確かめ、道路名・規制の断定・事実にない数字があれば捨てる。出力は snow/road_ai.json。
+  - GitHub Models は 2026/7/30 に終了したため使っていない。外部の AI・API キー・課金はない。

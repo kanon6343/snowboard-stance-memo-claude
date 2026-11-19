@@ -1,11 +1,13 @@
 /* スタンスメモ v3 のオフライン用。RELEASE を上げると、新しい版として入れ直す */
-const RELEASE = '3006';
+const RELEASE = '3007';
 const CACHE_PREFIX = 'stance-memo-v3:';
 const CACHE = CACHE_PREFIX + RELEASE;
-const DATA = new URL('../snow/latest.json', self.location).href;
+// 雪山のデータ（毎時・3時間ごとに変わる）は、まず通信し、だめなら前回のものを出す
+const DATA = ['../snow/latest.json', '../snow/road_ai.json'].map(p => new URL(p, self.location).href);
+const DATA_CACHE = CACHE_PREFIX + 'data';
 const SHELL = [
-  './', 'index.html', 'app.css?v=3006', 'manifest.webmanifest',
-  'js/main.js?v=3006', 'js/ui.js', 'js/store.js', 'js/binding.js', 'js/record.js', 'js/history.js', 'js/snow.js', 'js/settings.js',
+  './', 'index.html', 'app.css?v=3007', 'manifest.webmanifest',
+  'js/main.js?v=3007', 'js/ui.js', 'js/store.js', 'js/binding.js', 'js/record.js', 'js/history.js', 'js/snow.js', 'js/settings.js',
   '../icons/icon-claude-192.png', '../icons/icon-claude-512.png', '../icons/icon-claude-maskable-512.png', '../icons/apple-touch-icon-claude.png',
 ].map(p => new URL(p, self.location).href);
 
@@ -14,7 +16,7 @@ self.addEventListener('install', e => {
 });
 self.addEventListener('activate', e => {
   e.waitUntil((async () => {
-    for (const k of await caches.keys()) if (k.startsWith(CACHE_PREFIX) && k !== CACHE) await caches.delete(k);
+    for (const k of await caches.keys()) if (k.startsWith(CACHE_PREFIX) && k !== CACHE && k !== DATA_CACHE) await caches.delete(k);
     await self.clients.claim();
   })());
 });
@@ -24,16 +26,16 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  // 雪山のデータ：まず通信、だめなら前回のもの
-  if (url.href.split('?')[0] === DATA) {
+  const dataUrl = DATA.find(u => u === url.href.split('?')[0]);
+  if (dataUrl) {
     e.respondWith((async () => {
-      const cache = await caches.open(CACHE_PREFIX + 'data');
+      const cache = await caches.open(DATA_CACHE);
       try {
         const res = await fetch(req);
-        if (res.ok) cache.put(DATA, res.clone());
+        if (res.ok) cache.put(dataUrl, res.clone());
         return res;
       } catch {
-        return (await cache.match(DATA)) || Response.error();
+        return (await cache.match(dataUrl)) || Response.error();
       }
     })());
     return;

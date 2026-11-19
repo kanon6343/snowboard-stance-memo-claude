@@ -4,6 +4,8 @@ import { h, $, $$, toast, sheet, segmented, dayLabel } from './ui.js';
 import * as S from './store.js';
 
 const DATA_URL = '../snow/latest.json';
+const AI_URL = '../snow/road_ai.json';
+const ROAD_LEVEL = ['ふだんの冬道', '注意', '警戒'];
 const STALE_H = 6;
 const MAX_COMPARE = 3;
 
@@ -48,7 +50,7 @@ const SCORE = {
 
 export function createSnowView(app) {
   const root = h('section.view', { id: 'view-snow', 'aria-labelledby': 'snowTitle' });
-  let data = null, loading = false, loadError = '';
+  let data = null, loading = false, loadError = '', roadAi = null;
   let when = 'weekend';
   let compare = new Set();
   let favs = new Set(S.readJSON(S.KEYS.snowFav, []));
@@ -79,6 +81,8 @@ export function createSnowView(app) {
       const json = await res.json();
       if (!json || json.version !== 1 || !Array.isArray(json.spots)) throw new Error('形式が違います');
       data = json; loadError = '';
+      // 道路の注意の AI 版（なくても動く）
+      roadAi = await fetch(AI_URL, { cache: force ? 'reload' : 'no-cache' }).then(r => (r.ok ? r.json() : null)).catch(() => null);
     } catch (e) {
       loadError = navigator.onLine === false ? '通信できません。' : `データを読めませんでした（${e.message}）。`;
     } finally { loading = false; }
@@ -164,6 +168,13 @@ export function createSnowView(app) {
       e.flags.length ? h('span.pick-flag', e.flags.join(' · ')) : null);
   }
 
+  // 選んだ日（今週末なら土日）の道路の注意（ルール版）の一番高い段階
+  function roadBadge(s) {
+    const days = (s.road?.days || []).filter(d => (when === 'weekend' ? weekendDates(s) : [when]).includes(d.date));
+    const lv = Math.max(0, ...days.map(d => d.level || 0));
+    return lv ? h('span.road-badge' + (lv >= 2 ? '.high' : ''), `🚗 道路：${ROAD_LEVEL[lv]}`) : null;
+  }
+
   function row(s, e) {
     const ev = e?.evals[0];
     const [icon, word] = wx(ev?.dd.code);
@@ -176,7 +187,8 @@ export function createSnowView(app) {
         h('span.spot-snow', e ? snowText(e.snowSum) : '—', h('small', e && rangeText(e.snowSum) ? rangeText(e.snowSum) : '')),
         h('span.spot-obs', s.obs ? `積雪 ${s.obs.depth ?? '—'}cm` : s.obs_failed ? '実測なし' : ''),
         e && (e.out.length || e.flags.length) ? h('span.spot-flags' + (e.out.length ? '.bad' : ''), [...e.out, ...e.flags].join(' · ')) : null,
-        s.error ? h('span.spot-flags.bad', '予報を取れませんでした') : null),
+        s.error ? h('span.spot-flags.bad', '予報を取れませんでした') : null,
+        roadBadge(s)),
       h('div.spot-actions',
         h('button.icon-btn', { type: 'button', 'aria-pressed': String(fav), 'aria-label': fav ? 'お気に入りから外す' : 'お気に入りにする', onclick: () => toggleFav(s.id) }, fav ? '★' : '☆'),
         h('label.compare-check', h('input', { type: 'checkbox', checked, onchange: ev2 => toggleCompare(s.id, ev2.target) }), '比べる')));
@@ -246,12 +258,35 @@ export function createSnowView(app) {
       models.length ? h('details.models', h('summary', '予報モデルどうしを比べる'),
         h('div.table-scroll', h('table.day-table', h('thead', h('tr', h('th', '日'), models.map(m => h('th', m)), h('th', 'そろい具合'))),
           h('tbody', days.map(day => h('tr', h('th', dayLabel(day.date)), models.map(m => h('td', r0(day.models?.[m]))), h('td', day.agree || '—'))))))) : null,
+      roadSection(s),
       h('h3', '道路の規制（チェーン規制・通行止め）'),
       h('ul.links.road', roadLinks(s).map(([t, u, note]) => h('li', h('a', { href: u, target: '_blank', rel: 'noopener' }, t), note ? h('small', ` ${note}`) : null))),
       h('p.hint', '規制は刻々と変わります。出発前と、途中の休憩でも確かめてください。冬用タイヤでも、チェーン規制の区間はチェーンが必要です。'),
       h('h3', 'もっと見る'),
       h('ul.links', links.map(([t, u]) => h('li', h('a', { href: u, target: '_blank', rel: 'noopener' }, t)))));
     sheet(s.name, body, { wide: true });
+  }
+
+  // 道路の注意：ルール版と AI 版を並べる（比べられるように）
+  function roadSection(s) {
+    const road = s.road;
+    if (!road) return null;
+    const ai = roadAi?.texts?.[s.id];
+    const aiOld = roadAi && data && Date.parse(roadAi.based_on || 0) < Date.parse(data.made) - 6 * 3600e3;
+    return h('section.road-box',
+      h('h3', '道路の注意（天気から）'),
+      road.warnings?.length ? h('p.road-warn', `気象庁：${road.warnings.join('・')}が発表中`) : null,
+      h('div.road-pair',
+        h('div.road-col',
+          h('h4', 'ルールで作った注意'),
+          h('ul.road-days', road.days.slice(0, 4).map(d => h('li.lv' + (d.level || 0),
+            h('strong', dayLabel(d.date)), h('span.road-lv', ROAD_LEVEL[d.level || 0]),
+            d.points?.length ? h('span.road-points', d.points.join('／')) : null)))),
+        h('div.road-col.ai',
+          h('h4', 'AI がまとめた注意'),
+          ai ? h('p.road-ai-text', ai.text) : h('p.hint', roadAi ? 'この場所の文は、確かめに通らなかったため出していません。' : 'まだありません（3時間ごとに作ります）。'),
+          roadAi ? h('small.hint', `${roadAi.model} が ${new Date(roadAi.made).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} に作成${aiOld ? '（古いデータから）' : ''}。AI は間違うことがあります。`) : null)),
+      h('p.hint', `スキー場（標高 約${s.elev}m）の予報と、気象庁の警報・注意報から作った目安です。実際の通行止め・チェーン規制は、下の公式の道路情報で確かめてください。`));
   }
 
   return { el: root, show: () => load(false), reload: () => load(true) };

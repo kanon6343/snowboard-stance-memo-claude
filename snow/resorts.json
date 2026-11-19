@@ -1,5 +1,5 @@
 {
- "_説明": "雪山レポートの対象。lat/lon はスキー場のおおよその位置、elev は予報を計算する標高（m、ゲレンデの中ほど）。jma_office / jma_week_area は気象庁の週間天気予報の府県と地域のコード。自由に足したり消したりしてよい。 id はチャッピー版（weather/spot-catalog.json）と共通の地点 ID。official は公式サイト。",
+ "_説明": "雪山レポートの対象。lat/lon はスキー場のおおよその位置、elev は予報を計算する標高（m、ゲレンデの中ほど）。jma_office / jma_week_area は気象庁の週間天気予報の府県と地域のコード。自由に足したり消したりしてよい。 id はチャッピー版（weather/spot-catalog.json）と共通の地点 ID。official は公式サイト。 jma_area20 は気象庁の警報・注意報の市町村などの区域コード（国土地理院の逆ジオコーダーで決めた）。",
  "resorts": [
   {
    "id": "hirafu",
@@ -10,7 +10,8 @@
    "elev": 800,
    "jma_office": "016000",
    "jma_week_area": "016000",
-   "official": "https://www.grand-hirafu.jp/"
+   "official": "https://www.grand-hirafu.jp/",
+   "jma_area20": "0140000"
   },
   {
    "id": "rusutsu",
@@ -21,7 +22,8 @@
    "elev": 600,
    "jma_office": "016000",
    "jma_week_area": "016000",
-   "official": "https://rusutsu.com/trail-map/"
+   "official": "https://rusutsu.com/trail-map/",
+   "jma_area20": "0139700"
   },
   {
    "id": "kiroro",
@@ -32,7 +34,8 @@
    "elev": 900,
    "jma_office": "016000",
    "jma_week_area": "016000",
-   "official": "https://www.kiroro.co.jp/ja/snowworld/"
+   "official": "https://www.kiroro.co.jp/ja/snowworld/",
+   "jma_area20": "0140900"
   },
   {
    "id": "furano",
@@ -43,7 +46,8 @@
    "elev": 600,
    "jma_office": "012000",
    "jma_week_area": "012000",
-   "official": "https://www.princehotels.co.jp/ski/furano/"
+   "official": "https://www.princehotels.co.jp/ski/furano/",
+   "jma_area20": "0122900"
   },
   {
    "id": "hakkoda",
@@ -54,7 +58,8 @@
    "elev": 1000,
    "jma_office": "020000",
    "jma_week_area": "020010",
-   "official": "https://www.hakkoda-ropeway.jp/"
+   "official": "https://www.hakkoda-ropeway.jp/",
+   "jma_area20": "0220100"
   },
   {
    "id": "appi",
@@ -65,7 +70,8 @@
    "elev": 900,
    "jma_office": "030000",
    "jma_week_area": "030010",
-   "official": "https://www.appi.co.jp/area/ski/"
+   "official": "https://www.appi.co.jp/area/ski/",
+   "jma_area20": "0321400"
   },
   {
    "id": "zao",
@@ -76,7 +82,8 @@
    "elev": 1200,
    "jma_office": "060000",
    "jma_week_area": "060000",
-   "official": "https://zaomountainresort.com/"
+   "official": "https://zaomountainresort.com/",
+   "jma_area20": "0620100"
   },
   {
    "id": "inawashiro",
@@ -87,7 +94,8 @@
    "elev": 900,
    "jma_office": "070000",
    "jma_week_area": "070030",
-   "official": "https://www.inawashiro-ski.com/"
+   "official": "https://www.inawashiro-ski.com/",
+   "jma_area20": "0740800"
   },
   {
    "id": "marunuma",
@@ -98,7 +106,8 @@
    "elev": 1700,
    "jma_office": "100000",
    "jma_week_area": "100020",
-   "official": "https://www.marunuma.jp/winter/"
+   "official": "https://www.marunuma.jp/winter/",
+   "jma_area20": "1044300"
   },
   {
    "id": "kawaba",
@@ -109,7 +118,8 @@
    "elev": 1600,
    "jma_office": "100000",
    "jma_week_area": "100020",
-   "official": "https://www.kawaba.co.jp/"
+   "official": "https://www.kawaba.co.jp/",
+   "jma_area20": "1044400"
   },
   {
    "id": "naeba",
@@ -120,7 +130,8 @@
    "elev": 1200,
    "jma_office": "150000",
    "jma_week_area": "150000",
-   "official": "https://www.princehotels.co.jp/ski/naeba/"
+   "official": "https://www.princehotels.co.jp/ski/naeba/",
+   "jma_area20": "1546100"
   },
   {
    "id": "gala",
@@ -131,7 +142,8 @@
    "elev": 800,
    "jma_office": "150000",
    "jma_week_area": "150000",
-   "official": "https://gala.co.jp/winter/"
+   "official": "https://gala.co.jp/winter/",
+   "jma_area20": "1546100"
   },
   {
    "id": "akakura",
@@ -142,7 +154,8 @@
    "elev": 1000,
    "jma_office": "150000",
    "jma_week_area": "150000",
-   "official": "https://akakura-ski.com/"
+   "official": "https://akakura-ski.com/",
+   "jma_area20": "1521700"
   },
   {
    "id": "charmant",
@@ -153,7 +166,8 @@
    "elev": 590,
    "jma_office": "150000",
    "jma_week_area": "150000",
-   "official": "https://charmant-hiuchi.jp/"
+   "official": "https://charmant-hiuchi.jp/",
+   "jma_area20": "1521600"
   },
   {
    "id": "nozawa",
@@ -164,7 +178,8 @@
    "elev": 1000,
    "jma_office": "200000",
    "jma_week_area": "200010",
-   "official": "https://nozawaski.com/"
+   "official": "https://nozawaski.com/",
+   "jma_area20": "2056300"
   },
   {
    "id": "shiga",
@@ -175,7 +190,8 @@
    "elev": 1700,
    "jma_office": "200000",
    "jma_week_area": "200010",
-   "official": "https://shigakogen-ski.or.jp/"
+   "official": "https://shigakogen-ski.or.jp/",
+   "jma_area20": "2056100"
   },
   {
    "id": "happo",
@@ -186,7 +202,8 @@
    "elev": 1200,
    "jma_office": "200000",
    "jma_week_area": "200100",
-   "official": "https://www.happo-one.jp/"
+   "official": "https://www.happo-one.jp/",
+   "jma_area20": "2048500"
   },
   {
    "id": "jam-katsuyama",
@@ -197,7 +214,8 @@
    "elev": 780,
    "jma_office": "180000",
    "jma_week_area": "180000",
-   "official": "https://jamresort.jp/activity-white/"
+   "official": "https://jamresort.jp/activity-white/",
+   "jma_area20": "1820600"
   },
   {
    "id": "dynaland",
@@ -208,7 +226,8 @@
    "elev": 1200,
    "jma_office": "210000",
    "jma_week_area": "210010",
-   "official": "https://www.dynaland.jp/"
+   "official": "https://www.dynaland.jp/",
+   "jma_area20": "2121900"
   },
   {
    "id": "okuibuki",
@@ -219,7 +238,8 @@
    "elev": 790,
    "jma_office": "250000",
    "jma_week_area": "250020",
-   "official": "https://www.okuibuki.co.jp/"
+   "official": "https://www.okuibuki.co.jp/",
+   "jma_area20": "2521400"
   },
   {
    "id": "biwako",
@@ -230,7 +250,8 @@
    "elev": 960,
    "jma_office": "250000",
    "jma_week_area": "250010",
-   "official": "https://www.biwako-valley.com/w_season/openclose/"
+   "official": "https://www.biwako-valley.com/w_season/openclose/",
+   "jma_area20": "2520102"
   },
   {
    "id": "hachikita",
@@ -241,7 +262,8 @@
    "elev": 800,
    "jma_office": "280000",
    "jma_week_area": "280020",
-   "official": "https://www.hachi-hachikita.co.jp/"
+   "official": "https://www.hachi-hachikita.co.jp/",
+   "jma_area20": "2858500"
   },
   {
    "id": "daisen",
@@ -252,7 +274,8 @@
    "elev": 900,
    "jma_office": "310000",
    "jma_week_area": "310000",
-   "official": "https://daisen-mountain.jp/"
+   "official": "https://daisen-mountain.jp/",
+   "jma_area20": "3138600"
   },
   {
    "id": "ishizuchi",
@@ -263,7 +286,8 @@
    "elev": 1280,
    "jma_office": "380000",
    "jma_week_area": "380000",
-   "official": "https://www.ishizuchi.com/ski/"
+   "official": "https://www.ishizuchi.com/ski/",
+   "jma_area20": "3820600"
   }
  ]
 }

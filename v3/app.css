@@ -315,6 +315,21 @@ tr.bad td, td.bad { color: var(--danger); }
 .compare-table th:first-child { white-space: nowrap; }
 .cell-wx { font-size: 18px; }
 .models summary { min-height: 44px; display: flex; align-items: center; font-weight: 700; cursor: pointer; }
+.road-badge { grid-column: 1 / -1; font-size: 12.5px; font-weight: 700; color: var(--warn); }
+.road-badge.high { color: var(--danger); }
+.road-box { margin-top: 6px; }
+.road-warn { margin: 0 0 8px; padding: 8px 10px; border-radius: 10px; background: var(--warn-soft); color: var(--ink); font-weight: 700; font-size: 14px; }
+.road-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.road-col { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--surface-2); min-width: 0; }
+.road-col h4 { margin: 0 0 6px; font-size: 13.5px; color: var(--muted); }
+.road-col.ai h4::after { content: " AI"; font-size: 11px; padding: 1px 6px; margin-left: 4px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+.road-days { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.road-days li { display: grid; grid-template-columns: auto 1fr; gap: 0 8px; font-size: 13.5px; }
+.road-days .road-lv { font-weight: 700; }
+.road-days .road-points { grid-column: 1 / -1; color: var(--muted); font-size: 12.5px; }
+.road-days li.lv1 .road-lv { color: var(--warn); }
+.road-days li.lv2 .road-lv { color: var(--danger); }
+.road-ai-text { margin: 0 0 6px; line-height: 1.6; }
 .links { padding-left: 1.2em; margin: 0; }
 .links li { margin: 8px 0; }
 .source { margin-top: 18px; }
