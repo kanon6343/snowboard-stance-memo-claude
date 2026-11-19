@@ -1,13 +1,13 @@
 /* スタンスメモ v3 のオフライン用。RELEASE を上げると、新しい版として入れ直す */
-const RELEASE = '3007';
+const RELEASE = '3008';
 const CACHE_PREFIX = 'stance-memo-v3:';
 const CACHE = CACHE_PREFIX + RELEASE;
 // 雪山のデータ（毎時・3時間ごとに変わる）は、まず通信し、だめなら前回のものを出す
 const DATA = ['../snow/latest.json', '../snow/road_ai.json'].map(p => new URL(p, self.location).href);
 const DATA_CACHE = CACHE_PREFIX + 'data';
 const SHELL = [
-  './', 'index.html', 'app.css?v=3007', 'manifest.webmanifest',
-  'js/main.js?v=3007', 'js/ui.js', 'js/store.js', 'js/binding.js', 'js/record.js', 'js/history.js', 'js/snow.js', 'js/settings.js',
+  './', 'index.html', 'app.css?v=3008', 'manifest.webmanifest',
+  'js/main.js?v=3008', 'js/ui.js', 'js/store.js', 'js/binding.js', 'js/record.js', 'js/history.js', 'js/snow.js', 'js/settings.js',
   '../icons/icon-claude-192.png', '../icons/icon-claude-512.png', '../icons/icon-claude-maskable-512.png', '../icons/apple-touch-icon-claude.png',
 ].map(p => new URL(p, self.location).href);
 

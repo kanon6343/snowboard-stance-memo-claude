@@ -168,6 +168,14 @@ export function createSnowView(app) {
       e.flags.length ? h('span.pick-flag', e.flags.join(' · ')) : null);
   }
 
+  // 予報モデルの積雪の深さ（その日の9時）
+  const depthOn = (s, date) => s.days?.find(d => d.date === date)?.depth || null;
+  function depthText(s) {
+    const date = when === 'weekend' ? weekendDates(s).slice(-1)[0] : when;
+    const d = date && depthOn(s, date);
+    return d?.best != null ? `積雪の予想 ${d.best}cm` : '';
+  }
+
   // 選んだ日（今週末なら土日）の道路の注意（ルール版）の一番高い段階
   function roadBadge(s) {
     const days = (s.road?.days || []).filter(d => (when === 'weekend' ? weekendDates(s) : [when]).includes(d.date));
@@ -185,7 +193,7 @@ export function createSnowView(app) {
         h('span.spot-name', s.name, h('small', s.region)),
         h('span.spot-wx', { title: word }, icon),
         h('span.spot-snow', e ? snowText(e.snowSum) : '—', h('small', e && rangeText(e.snowSum) ? rangeText(e.snowSum) : '')),
-        h('span.spot-obs', s.obs ? `積雪 ${s.obs.depth ?? '—'}cm` : s.obs_failed ? '実測なし' : ''),
+        h('span.spot-obs', [s.obs ? `積雪 ${s.obs.depth ?? '—'}cm（実測）` : s.obs_failed ? '実測なし' : '', depthText(s, e)].filter(Boolean).join(' · ')),
         e && (e.out.length || e.flags.length) ? h('span.spot-flags' + (e.out.length ? '.bad' : ''), [...e.out, ...e.flags].join(' · ')) : null,
         s.error ? h('span.spot-flags.bad', '予報を取れませんでした') : null,
         roadBadge(s)),
@@ -240,21 +248,23 @@ export function createSnowView(app) {
       h('div.stat-tiles',
         h('div.tile', h('strong', s.weekend ? `${r0(s.weekend.med)}cm` : '—'), h('span', `今週末の新雪${s.weekend ? `（${r0(s.weekend.p10)}〜${r0(s.weekend.p90)}）` : ''}`)),
         h('div.tile', h('strong', s.week ? `${r0(s.week.med)}cm` : '—'), h('span', '7日間の新雪')),
-        h('div.tile', h('strong', s.obs ? `${s.obs.depth ?? '—'}cm` : '—'), h('span', s.obs ? `積雪の実測（${s.obs.name}・${s.obs.km}km）` : '近くに観測点なし'))),
+        h('div.tile', h('strong', s.obs ? `${s.obs.depth ?? '—'}cm` : '—'), h('span', s.obs ? `積雪の実測（${s.obs.name}・${s.obs.km}km）` : '近くに観測点なし')),
+        (() => { const d = depthOn(s, weekendDates(s).slice(-1)[0]); return h('div.tile', h('strong', d?.best != null ? `${d.best}cm` : '—'), h('span', `今週末の積雪の予想${d?.min != null && d.min !== d.max ? `（モデルで ${d.min}〜${d.max}）` : ''}`)); })()),
       h('h3', '日ごとの予報'),
       h('div.table-scroll', h('table.day-table',
-        h('thead', h('tr', h('th', '日'), h('th', '天気'), h('th', '新雪'), h('th', '朝まで'), h('th', '風'), h('th', '気温'), h('th', '気象庁'))),
+        h('thead', h('tr', h('th', '日'), h('th', '天気'), h('th', '新雪'), h('th', '朝まで'), h('th', '積雪'), h('th', '風'), h('th', '気温'), h('th', '気象庁'))),
         h('tbody', days.map(day => {
           const e = evalDay(day); const [icon, word] = wx(e.dd.code); const j = day.jma;
           return h('tr' + (e.out.length ? '.bad' : ''),
             h('th', dayLabel(day.date)), h('td', { title: word }, icon),
             h('td', `${r0(day.snow?.med)}`, h('small', ` ${r0(day.snow?.p10)}〜${r0(day.snow?.p90)}`)),
             h('td', e.dd.snow_am !== undefined && e.dd.snow_am !== null ? r0(e.dd.snow_am) : '—'),
+            h('td', day.depth?.best != null ? `${day.depth.best}` : '—', day.depth?.min != null && day.depth.min !== day.depth.max ? h('small', ` ${day.depth.min}〜${day.depth.max}`) : null),
             h('td', e.dd.gust !== undefined ? `${r0(e.dd.gust)}` : '—'),
             h('td', `${r0(day.tmin)}〜${r0(day.tmax)}`),
             h('td.jma', j ? `${j.w}${j.pop ? ` ${j.pop}%` : ''}${j.rel ? `（${j.rel}）` : ''}` : '—'));
         })))),
-      h('p.hint', '新雪は cm（真ん中の値と、ありそうな幅）。「朝まで」は前日9時〜当日9時の新雪。風は日中の最大瞬間風速 m/s。気象庁の（A/B/C）は予報の信頼度。'),
+      h('p.hint', '新雪は cm（真ん中の値と、ありそうな幅）。「朝まで」は前日9時〜当日9時の新雪。「積雪」は予報モデルが計算した9時の積雪の深さで、小さい数字はモデルどうしの幅（山ではずれやすい目安）。風は日中の最大瞬間風速 m/s。気象庁の（A/B/C）は予報の信頼度。'),
       models.length ? h('details.models', h('summary', '予報モデルどうしを比べる'),
         h('div.table-scroll', h('table.day-table', h('thead', h('tr', h('th', '日'), models.map(m => h('th', m)), h('th', 'そろい具合'))),
           h('tbody', days.map(day => h('tr', h('th', dayLabel(day.date)), models.map(m => h('td', r0(day.models?.[m]))), h('td', day.agree || '—'))))))) : null,

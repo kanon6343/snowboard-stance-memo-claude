@@ -17,7 +17,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-VERSION = "v00.06.00"
+VERSION = "v00.07.00"
 ARGS = argparse.ArgumentParser(description="雪山レポート")
 ARGS.add_argument("--out", default="snow", help="resorts.json があり、報告を書き出すフォルダ")
 ARGS.add_argument("--back", default="", help="戻るリンクの行き先（例 ../ でスタンスメモへ）")
@@ -306,7 +306,35 @@ def road_rules(day, prev_day, warn_codes=()):
     return {"level": level, "points": points}
 
 
-def app_json(results, obs_time, now, daymap, warnings=None):
+DEPTH_MODELS = ["best_match", "ecmwf_ifs025", "gfs_seamless", "icon_seamless"]   # 気象庁のモデルは積雪の深さを出さない
+
+
+def snow_depth_all(resorts, days=7):
+    """予報モデルが計算した積雪の深さ（cm、各日 9時）。{地点ID: {日付: {"best", "min", "max", "n"}}}
+    モデルどうしの差がとても大きい（同じ日・同じ場所で数cm〜100cm以上）ので、真ん中の値だけでなく幅も残す。"""
+    q = (f"latitude={','.join(str(r['lat']) for r in resorts)}&longitude={','.join(str(r['lon']) for r in resorts)}"
+         f"&elevation={','.join(str(r['elev']) for r in resorts)}&hourly=snow_depth&models={','.join(DEPTH_MODELS)}"
+         f"&timezone=Asia%2FTokyo&forecast_days={days}")
+    raw = get_json("https://api.open-meteo.com/v1/forecast?" + q, tries=2)
+    raw = raw if isinstance(raw, list) else [raw]
+    out = {}
+    for r, d in zip(resorts, raw):
+        h = d["hourly"]
+        res = {}
+        for i, t in enumerate(h["time"]):
+            if t[11:13] != "09":
+                continue
+            vals = {m: (h.get(f"snow_depth_{m}") or [None] * len(h["time"]))[i] for m in DEPTH_MODELS}
+            cm = {m: round(v * 100) for m, v in vals.items() if v is not None}
+            if not cm:
+                continue
+            # 幅は「おすすめの値」も含めた全モデルの最小〜最大（おすすめの値が幅の外に出ないように）
+            res[t[:10]] = {"best": cm.get("best_match"), "min": min(cm.values()), "max": max(cm.values()), "n": len(cm)}
+        out[r["id"]] = res
+    return out
+
+
+def app_json(results, obs_time, now, daymap, warnings=None, depthmap=None):
     """アプリ（Claude 版・チャッピー版）が読む最新データ。地点 ID はチャッピー版と共通"""
     warnings = warnings or {}
     def r1(v):
@@ -335,7 +363,8 @@ def app_json(results, obs_time, now, daymap, warnings=None):
                          "tmax": r1(d.get("tmax")), "tmin": r1(d.get("tmin")),
                          "models": {k: r1(v) for k, v in models.items()},
                          "agree": agreement(list(models.values())) if models else "",
-                         "day": dm.get(date), "jma": week.get(date)})
+                         "day": dm.get(date), "jma": week.get(date),
+                         "depth": ((depthmap or {}).get(r["id"]) or {}).get(date)})
         sp["days"] = days
         # 道路の注意（ルール）。警報・注意報は「今」のものなので、今日の分にだけ足す
         w = warnings.get(r.get("jma_area20")) or {}
@@ -510,8 +539,15 @@ def build(results, obs_time, now):
                        + (f'（24時間で {o["change24"]:+.0f}cm）' if o.get("change24") is not None else ""))
             else:
                 obs = "近く（40km以内）に積雪の観測点がありません"
+            def depth_cell(date):
+                v = (r.get("depth_fc") or {}).get(date)
+                if not v or v.get("best") is None:
+                    return '<td class="num sub">—</td>'
+                rng = f'<span class="sub"> ({v["min"]}〜{v["max"]})</span>' if v.get("min") is not None and v["min"] != v["max"] else ""
+                return f'<td class="num">{v["best"]}{rng}</td>'
             days = "".join(
                 f'<tr><td>{daylabel(d["date"])}</td><td class="num"><b>{d["med"]:.0f}</b><span class="sub"> ({d["p10"]:.0f}〜{d["p90"]:.0f})</span></td>'
+                f'{depth_cell(d["date"])}'
                 f'<td class="num">{fmt(d["tmin"], "°", 0)} / {fmt(d["tmax"], "°", 0)}</td><td class="sub">{quality(d["tmax"]) if d["med"] >= 1 else ""}'
                 f'{" ・モデル差あり" if d["model_gap"] >= 10 else ""}</td></tr>' for d in r["days"])
             w, we = r["week"], r.get("weekend")
@@ -524,7 +560,8 @@ def build(results, obs_time, now):
                 f'<span class="v"><b>{w["med"]:.0f}</b><small>cm</small><span class="sub">7日</span></span>'
                 f'<span class="v2 sub">週末 {(we or {}).get("med", 0) or 0:.0f}cm ・ 積雪 {html.escape(depth)}</span></summary>'
                 f'<div class="more"><p class="sub">標高{r["elev"]}mで計算 ・ 7日の幅 {w["p10"]:.0f}〜{w["p90"]:.0f}cm</p><p>{obs}</p>'
-                f'<div class="tbl"><table><tr><th>日</th><th class="num">新雪 cm</th><th class="num">最低/最高</th><th>雪質の目安</th></tr>{days}</table></div>{extra}'
+                f'<div class="tbl"><table><tr><th>日</th><th class="num">新雪 cm</th><th class="num">積雪の予想 cm</th><th class="num">最低/最高</th><th>雪質の目安</th></tr>{days}</table></div>'
+                f'<p class="sub">積雪の予想は予報モデルの計算値（9時）。（ ）はモデルどうしの幅で、山ではずれやすい目安です。今の積雪は上の実測を見てください。</p>{extra}'
                 f'<button type="button" class="fav" data-id="{sid[r["name"]]}" aria-pressed="false">☆ お気に入りに追加</button></div></details>')
         sections.append(f'<section class="region" id="{rid[region]}"><h2>{html.escape(region)}</h2>{"".join(rows)}</section>')
 
@@ -671,6 +708,14 @@ def main():
         daymap = {}
     print("気象庁の警報・注意報を取得…")
     warnings = jma_warnings([r["jma_office"] for r in resorts if r.get("jma_office")])
+    print("予報モデルの積雪の深さを取得…")
+    try:
+        depthmap = snow_depth_all(resorts)
+    except Exception as e:  # noqa: BLE001
+        print(f"  積雪の深さを取れず: {e}")
+        depthmap = {}
+    for item in results:
+        item["depth_fc"] = depthmap.get(item["id"], {})
     SITE.mkdir(exist_ok=True)
     (SITE / "archive").mkdir(exist_ok=True)
     DATA.mkdir(exist_ok=True)
@@ -682,7 +727,7 @@ def main():
         old = old.replace(f'<p class="back"><a href="{html.escape(OPT.back)}">', f'<p class="back"><a href="../{html.escape(OPT.back)}">', 1)
     (SITE / "archive" / f"{now:%Y-%m-%d}.html").write_text(old, encoding="utf-8")
     archive_index()
-    (SITE / "latest.json").write_text(json.dumps(app_json(results, obs_time, now, daymap, warnings), ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    (SITE / "latest.json").write_text(json.dumps(app_json(results, obs_time, now, daymap, warnings, depthmap), ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     # 予報の記録は 5・11・17・23時の枠ごとに1つだけ（毎時動いても増えすぎないように。遅れて動いても枠の最初の1回で残す）
     slot = max(now.replace(hour=h, minute=0, second=0, microsecond=0) - dt.timedelta(days=d)
                for h in RECORD_HOURS for d in (0, 1)
