@@ -134,6 +134,9 @@ legend { font-size: 13.5px; font-weight: 700; color: var(--muted); padding: 0 4p
 
 .mini-board { display: flex; gap: 6px; flex: none; }
 .mini-mount { display: grid; grid-template-columns: 7px 4px 7px; gap: 2px 3px; padding: 4px; background: var(--board); border-radius: 6px; }
+.mini-mount b { grid-column: 1 / -1; font-size: 9px; line-height: 1; text-align: center; color: var(--muted); }
+.detail-board .mini-mount b { font-size: 12px; }
+.mount-head small { font-weight: 400; color: var(--muted); font-size: 12.5px; }
 .mini-mount i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
 .mini-mount i.r { width: 4px; border-radius: 1px; background: transparent; }
 .mini-mount i.on { background: var(--hole-on); }

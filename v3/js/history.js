@@ -1,6 +1,6 @@
 // 履歴の画面：検索・絞り込み・並べ替え、一覧／板ごと、詳細、お気に入り、編集、削除、統計
 import { h, $, $$, toast, ask, sheet, segmented, fmtDate, signed, download } from './ui.js';
-import { miniBoard } from './binding.js';
+import { miniBoard, footOrder } from './binding.js';
 import * as S from './store.js';
 
 const DETAIL_LABEL = { nose: 'ノーズ側', tail: 'テール側', toe: 'つま先側', heel: 'かかと側' };
@@ -111,13 +111,14 @@ export function createHistoryView(app) {
   }
 
   function card(r) {
-    const angles = h('p.angles', h('span', h('small', '左'), signed(r.leftAngle)), h('span', h('small', '右'), signed(r.rightAngle)));
+    const dir = app.settings.stanceDir;
+    const angles = h('p.angles', footOrder(dir).map(s => h('span', h('small', s === 'left' ? '左' : '右'), signed(s === 'left' ? r.leftAngle : r.rightAngle))));
     const meta = [r.snow, r.stance, r.stanceWidth ? `幅 ${r.stanceWidth}cm` : '', r.disk.left || r.disk.right ? `ディスク ${r.disk.left || '—'}/${r.disk.right || '—'}` : ''].filter(Boolean);
     return h('article.record', { dataset: { id: r.id } },
       h('button.record-main', { type: 'button', onclick: () => openDetail(r.id), 'aria-label': `${r.board || '板名なし'} ${fmtDate(r.dateTime)} の詳細` },
         h('div.record-top', h('span.date', fmtDate(r.dateTime)), r.favorite ? h('span.star', { 'aria-label': 'お気に入り' }, '★') : null, S.hasDetail(r.detail) ? h('span.tag', '詳細') : null),
         h('h3', r.board || '板名なし'),
-        h('div.record-mid', angles, miniBoard(r)),
+        h('div.record-mid', angles, miniBoard(r, dir)),
         meta.length ? h('p.meta', meta.join(' · ')) : null,
         r.comment ? h('p.memo', r.comment) : null));
   }
@@ -146,7 +147,7 @@ export function createHistoryView(app) {
       ...detailRows(r.detail),
     ];
     const body = h('div.detail',
-      h('div.detail-board', miniBoard(r)),
+      h('div.detail-board', miniBoard(r, app.settings.stanceDir)),
       h('dl.rows', rows.map(([k, v]) => h('div', h('dt', k), h('dd', v)))),
       r.comment ? h('div.memo-block', h('h3', '感想'), h('p', r.comment)) : null);
     const dlg = sheet(r.board || '板名なし', body, { actions: [

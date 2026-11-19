@@ -2,11 +2,12 @@
 import { h, toast, ask, sheet, segmented, download } from './ui.js';
 import * as S from './store.js';
 
-export const VERSION = '3.0.0';
+export const VERSION = '3.0.1';
 
 export function createSettingsView(app) {
   const root = h('section.view', { id: 'view-settings', 'aria-labelledby': 'settingsTitle' });
   const themeSeg = segmented([['auto', '端末に合わせる'], ['light', 'ライト'], ['dark', 'ダーク']], app.settings.theme, v => { app.setSetting({ theme: v }); app.applyTheme(); }, { allowEmpty: false, label: '色' });
+  const dirSeg = segmented([['regular', 'レギュラー（左足が前）'], ['goofy', 'グーフィー（右足が前）']], app.settings.stanceDir, v => { app.setSetting({ stanceDir: v }); app.record.applyDir(); }, { allowEmpty: false, label: '前足' });
   const modeSeg = segmented([['simple', '簡易'], ['detail', '詳細']], app.settings.mode, v => app.setSetting({ mode: v }), { allowEmpty: false, label: '入力の細かさ' });
   const sources = h('div.sources');
   const fileInput = h('input', { type: 'file', accept: 'application/json,.json', hidden: true, onchange: () => readFile(fileInput.files[0]) });
@@ -17,6 +18,7 @@ export function createSettingsView(app) {
     h('header.view-head', h('h1', { id: 'settingsTitle' }, '設定')),
     h('section.card', h('h2', '表示'),
       h('div.field', h('span.field-label', '色'), themeSeg),
+      h('div.field', h('span.field-label', '前足'), dirSeg, h('small.hint', '板の図と履歴で、前足を左（上）に、つま先側をスタンスに合わせて表示します。')),
       h('div.field', h('span.field-label', '記録する画面'), modeSeg, h('small.hint', '詳細にすると、板の形状・セットバック・ディスクのずらし・ヒールカップも記録できます。'))),
     h('section.card', h('h2', 'バックアップと復元'),
       h('p.hint', '記録はこの端末のブラウザーの中だけにあります。機種変更の前や、ときどき書き出しておくと安心です。'),
@@ -101,7 +103,7 @@ export function createSettingsView(app) {
 
   return {
     el: root,
-    show() { themeSeg.set(app.settings.theme); modeSeg.set(app.settings.mode); renderSources(); renderUpdate(app.updateState); installBtn.hidden = !app.canInstall(); },
+    show() { themeSeg.set(app.settings.theme); dirSeg.set(app.settings.stanceDir); modeSeg.set(app.settings.mode); renderSources(); renderUpdate(app.updateState); installBtn.hidden = !app.canInstall(); },
     renderUpdate,
   };
 }

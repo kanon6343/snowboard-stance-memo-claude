@@ -136,7 +136,7 @@ export function mutate(fn) {
 }
 
 // ---------------------------------------------------------------- 設定・下書き（壊れていても既定値で動く）
-const DEFAULT_SETTINGS = { theme: 'auto', mode: 'simple', historyView: 'list', sort: 'new', snowMode: 'balance', snowRegion: 'all', importedFrom: [] };
+const DEFAULT_SETTINGS = { theme: 'auto', mode: 'simple', stanceDir: 'regular', historyView: 'list', sort: 'new', snowMode: 'balance', snowRegion: 'all', importedFrom: [] };
 export function readSettings() {
   try { return { ...DEFAULT_SETTINGS, ...obj(JSON.parse(localStorage.getItem(KEYS.settings) || '{}')) }; }
   catch { return { ...DEFAULT_SETTINGS }; }

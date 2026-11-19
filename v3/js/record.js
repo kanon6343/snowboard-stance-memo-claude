@@ -1,6 +1,6 @@
 // 記録する画面（簡易／詳細）。下書きは自動で残す。
 import { h, $, $$, toast, ask, segmented } from './ui.js';
-import { bindingBoard } from './binding.js';
+import { bindingBoard, footOrder } from './binding.js';
 import * as S from './store.js';
 
 const blank = () => ({
@@ -76,7 +76,10 @@ export function createRecordView(app) {
   // ---- スタンス
   const stanceSeg = segmented(S.STANCE.map(s => [s, s]), st.stance, v => { st.stance = v; changed(); }, { label: 'スタンス' });
   const widthInput = track(input(() => st.stanceWidth, v => (st.stanceWidth = v.trim()), { type: 'number', inputmode: 'decimal', min: '0', step: '0.5', placeholder: '53' }));
-  const cardStance = h('section.card', h('h2', 'スタンス'), h('div.field', h('span.field-label', '向き'), stanceSeg),
+  const dirSeg = segmented([['regular', 'レギュラー'], ['goofy', 'グーフィー']], app.settings.stanceDir, v => { app.setSetting({ stanceDir: v }); applyDir(); }, { allowEmpty: false, label: '前足' });
+  const cardStance = h('section.card', h('h2', 'スタンス'),
+    h('div.field', h('span.field-label', '前足'), dirSeg, h('small.hint', 'レギュラーは左足が前、グーフィーは右足が前。図と履歴の左右の並びが変わります（記録の中身は同じ）。')),
+    h('div.field', h('span.field-label', '向き'), stanceSeg),
     h('label.field.inline', h('span.field-label', '幅'), widthInput, h('span.unit', 'cm')));
 
   // ---- 角度とディスク（左右を並べる）
@@ -89,7 +92,9 @@ export function createRecordView(app) {
       h('div.field', h('span.field-label', 'ディスク'), diskSeg),
       detailOnly(field('フォワードリーン', track(input(() => d()[leanKey], v => (d()[leanKey] = v), { type: 'text', maxlength: '64', placeholder: '例：F2' })))));
   };
-  const cardFeet = h('section.card', h('h2', '角度とディスク'), h('div.feet', footCol('left'), footCol('right')));
+  const feetCols = { left: footCol('left'), right: footCol('right') };
+  const feetBox = h('div.feet');
+  const cardFeet = h('section.card', h('h2', '角度とディスク'), feetBox);
 
   // ---- セットバック（詳細）
   const sb = () => d().setback;
@@ -102,7 +107,7 @@ export function createRecordView(app) {
     h('div.field', h('span.field-label', '向き'), sbDir)));
 
   // ---- ビス穴
-  const board = bindingBoard(st, changed);
+  const board = bindingBoard(st, changed, () => app.settings.stanceDir);
   const cardHoles = h('section.card', h('h2', 'ビス穴と推奨位置'), h('p.hint', '使っている穴を押します。真ん中の細い枠は、板の推奨位置（目印）です。'), board);
 
   // ---- ディスクとヒールカップ（詳細）
@@ -121,9 +126,11 @@ export function createRecordView(app) {
         field('内側', track(input(() => hc().inner, v => (hc().inner = v), { type: 'text', maxlength: '64', placeholder: '例：3' }))),
         field('外側', track(input(() => hc().outer, v => (hc().outer = v), { type: 'text', maxlength: '64', placeholder: '例：3' })))));
   };
+  const gearCols = { left: gearCol('left'), right: gearCol('right') };
+  const gearBox = h('div.feet');
   const cardGear = detailOnly(h('section.card', h('h2', 'ビンディングの細かい調整'),
     field('ビンディング', track(input(() => d().bindingName, v => (d().bindingName = v), { type: 'text', maxlength: '128', placeholder: '例：Union Force' }))),
-    h('div.feet', gearCol('left'), gearCol('right'))));
+    gearBox));
 
   // ---- メモ
   const comment = h('textarea', { rows: 3, maxlength: '2000', placeholder: '滑った感じ、気づいたこと', oninput: () => { st.comment = comment.value; changed(); } });
@@ -145,6 +152,14 @@ export function createRecordView(app) {
   function applyMode() {
     root.dataset.mode = app.settings.mode;
     modeSwitch.set(app.settings.mode);
+  }
+  // 前足を先（左）に並べる
+  function applyDir() {
+    const order = footOrder(app.settings.stanceDir);
+    dirSeg.set(app.settings.stanceDir);
+    feetBox.replaceChildren(...order.map(s => feetCols[s]));
+    gearBox.replaceChildren(...order.map(s => gearCols[s]));
+    board.paint();
   }
   function syncAll() {
     syncers.forEach(s => s.sync());
@@ -253,6 +268,6 @@ export function createRecordView(app) {
     if (res.ok) app.refresh();
   }
 
-  applyMode(); syncAll();
-  return { el: root, load, refreshBoards, isEditing: () => !!editing, hasInput: () => !isEmpty() || !!editing, restored: !!(restored && restored.state) };
+  applyMode(); applyDir(); syncAll();
+  return { el: root, applyDir, load, refreshBoards, isEditing: () => !!editing, hasInput: () => !isEmpty() || !!editing, restored: !!(restored && restored.state) };
 }
