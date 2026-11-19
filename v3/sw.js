@@ -1,11 +1,11 @@
 /* スタンスメモ v3 のオフライン用。RELEASE を上げると、新しい版として入れ直す */
-const RELEASE = '3004';
+const RELEASE = '3005';
 const CACHE_PREFIX = 'stance-memo-v3:';
 const CACHE = CACHE_PREFIX + RELEASE;
 const DATA = new URL('../snow/latest.json', self.location).href;
 const SHELL = [
-  './', 'index.html', 'app.css?v=3004', 'manifest.webmanifest',
-  'js/main.js?v=3004', 'js/ui.js', 'js/store.js', 'js/binding.js', 'js/record.js', 'js/history.js', 'js/snow.js', 'js/settings.js',
+  './', 'index.html', 'app.css?v=3005', 'manifest.webmanifest',
+  'js/main.js?v=3005', 'js/ui.js', 'js/store.js', 'js/binding.js', 'js/record.js', 'js/history.js', 'js/snow.js', 'js/settings.js',
   '../icons/icon-claude-192.png', '../icons/icon-claude-512.png', '../icons/icon-claude-maskable-512.png', '../icons/apple-touch-icon-claude.png',
 ].map(p => new URL(p, self.location).href);
 
