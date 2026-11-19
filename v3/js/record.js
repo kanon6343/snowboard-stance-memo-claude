@@ -1,6 +1,6 @@
 // 記録する画面（簡易／詳細）。下書きは自動で残す。
 import { h, $, $$, toast, ask, segmented } from './ui.js';
-import { bindingBoard, footOrder } from './binding.js';
+import { bindingBoard } from './binding.js';
 import * as S from './store.js';
 
 const blank = () => ({
@@ -78,7 +78,7 @@ export function createRecordView(app) {
   const widthInput = track(input(() => st.stanceWidth, v => (st.stanceWidth = v.trim()), { type: 'number', inputmode: 'decimal', min: '0', step: '0.5', placeholder: '53' }));
   const dirSeg = segmented([['regular', 'レギュラー'], ['goofy', 'グーフィー']], app.settings.stanceDir, v => { app.setSetting({ stanceDir: v }); applyDir(); }, { allowEmpty: false, label: '前足' });
   const cardStance = h('section.card', h('h2', 'スタンス'),
-    h('div.field', h('span.field-label', '前足'), dirSeg, h('small.hint', 'レギュラーは左足が前、グーフィーは右足が前。図と履歴の左右の並びが変わります（記録の中身は同じ）。')),
+    h('div.field', h('span.field-label', '前足'), dirSeg, h('small.hint', 'レギュラーは左足が前、グーフィーは右足が前。ビス穴の図の向きだけが変わります（角度の欄はいつも左・右の順）。')),
     h('div.field', h('span.field-label', '向き'), stanceSeg),
     h('label.field.inline', h('span.field-label', '幅'), widthInput, h('span.unit', 'cm')));
 
@@ -153,12 +153,10 @@ export function createRecordView(app) {
     root.dataset.mode = app.settings.mode;
     modeSwitch.set(app.settings.mode);
   }
-  // 前足を先（左）に並べる
+  // 角度・調整の欄は、スタンスに関係なくいつも「左足・右足」の順（入力する場所が変わらないように）。図だけ前足に合わせる
   function applyDir() {
-    const order = footOrder(app.settings.stanceDir);
     dirSeg.set(app.settings.stanceDir);
-    feetBox.replaceChildren(...order.map(s => feetCols[s]));
-    gearBox.replaceChildren(...order.map(s => gearCols[s]));
+    if (!feetBox.childElementCount) { feetBox.append(feetCols.left, feetCols.right); gearBox.append(gearCols.left, gearCols.right); }
     board.paint();
   }
   function syncAll() {

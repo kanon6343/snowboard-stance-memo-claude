@@ -2,7 +2,7 @@
 import { h, toast, ask, sheet, segmented, download } from './ui.js';
 import * as S from './store.js';
 
-export const VERSION = '3.0.1';
+export const VERSION = '3.0.2';
 
 export function createSettingsView(app) {
   const root = h('section.view', { id: 'view-settings', 'aria-labelledby': 'settingsTitle' });
@@ -18,7 +18,7 @@ export function createSettingsView(app) {
     h('header.view-head', h('h1', { id: 'settingsTitle' }, '設定')),
     h('section.card', h('h2', '表示'),
       h('div.field', h('span.field-label', '色'), themeSeg),
-      h('div.field', h('span.field-label', '前足'), dirSeg, h('small.hint', '板の図と履歴で、前足を左（上）に、つま先側をスタンスに合わせて表示します。')),
+      h('div.field', h('span.field-label', '前足'), dirSeg, h('small.hint', 'ビス穴の図で、前足を上（履歴では左）に、つま先側をスタンスに合わせて表示します。角度の欄はいつも左・右の順です。')),
       h('div.field', h('span.field-label', '記録する画面'), modeSeg, h('small.hint', '詳細にすると、板の形状・セットバック・ディスクのずらし・ヒールカップも記録できます。'))),
     h('section.card', h('h2', 'バックアップと復元'),
       h('p.hint', '記録はこの端末のブラウザーの中だけにあります。機種変更の前や、ときどき書き出しておくと安心です。'),
