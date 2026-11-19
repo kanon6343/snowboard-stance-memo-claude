@@ -125,30 +125,43 @@ legend { font-size: 13.5px; font-weight: 700; color: var(--muted); padding: 0 4p
 #view-record:not([data-mode="detail"]) .view-head h1 { font-size: 20px; }
 #view-record:not([data-mode="detail"]) .action-bar { position: static; margin-top: 8px; padding: 6px; box-shadow: none; }
 #view-record:not([data-mode="detail"]) .action-bar .btn { min-height: 46px; }
-.quick { display: grid; gap: 8px; }
+.quick { display: grid; gap: 7px; }
 .quick input[type="text"], .quick input[type="number"] { min-height: 44px; padding: 8px 12px; }
 .quick .segmented { flex-wrap: nowrap; gap: 5px; }
 .quick .segmented button { min-height: 40px; min-width: 0; padding: 0 6px; flex: 1 1 0; }
 .quick-row { display: grid; grid-template-columns: minmax(0, 1fr) 92px; gap: 8px; align-items: center; }
 .quick-row .with-unit { gap: 4px; }
 .quick-row .with-unit input { width: 100%; text-align: center; }
-.quick-feet { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px 10px; box-shadow: var(--shadow); }
-.foot-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.foot-tabs button { min-height: 44px; display: flex; align-items: baseline; justify-content: center; gap: 8px; border: 1.5px solid var(--line-strong); border-radius: 12px; background: var(--surface-2); font-weight: 700; cursor: pointer; }
-.foot-tabs button strong { font-size: 18px; font-variant-numeric: tabular-nums; }
-.foot-tabs button small { font-size: 11.5px; opacity: .8; font-weight: 600; }
-.foot-tabs button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-.quick-foot { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 8px; margin: 8px 0 6px; align-items: center; }
-.quick-foot .stepper { grid-template-columns: 40px minmax(0, 1fr) 40px; }
-.quick-foot .stepper input { min-height: 44px; font-size: 20px; }
-.quick-foot .step { min-height: 44px; }
-.strip { display: grid; gap: 4px; }
-.strip-ends { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
-.strip-row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; justify-items: center; }
-.strip .hole { width: min(44px, 100%); height: auto; aspect-ratio: 1; }
-.strip .ref { width: min(44px, 100%); height: 18px; }
-.quick-memo { min-height: 44px; height: 44px; resize: none; transition: height .15s; }
-.quick-memo:focus { height: 88px; }
+/* 左右の足を並べ、ビス穴は縦 2 列。穴の大きさは画面の高さから決める（小さい画面でもスクロールなし、大きい画面では 44px） */
+.quick-feet {
+  --qh: clamp(28px, calc((100dvh - var(--tabbar) - env(safe-area-inset-bottom) - 392px) / 6), 44px);
+  background: var(--board); border: 2px solid var(--board-edge); border-radius: 26px; padding: 2px 8px 4px;
+}
+.qends { text-align: center; font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+.qends:first-child { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.qends:first-child > div { display: flex; justify-content: space-between; padding: 0 8px; font-size: 10.5px; }
+.qends b { font-weight: 700; }
+#view-record:not([data-mode="detail"]) .view-head { display: none; }
+.quick-row:first-child { grid-template-columns: minmax(0, 1fr) 84px auto; }
+.to-detail { min-height: 44px; padding: 0 12px; }
+.qcols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.qcol { display: grid; gap: 5px; justify-items: stretch; align-content: start; background: var(--surface); border-radius: 14px; padding: 6px; }
+.qcol-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px; align-items: center; }
+.qcol-head strong { display: grid; line-height: 1.15; font-size: 15px; }
+.qcol-head small { color: var(--muted); font-size: 10.5px; font-weight: 600; }
+.qcol-head .segmented { gap: 3px; }
+.qcol-head .segmented button { min-height: 36px; font-size: 14px; padding: 0; }
+.qcol .stepper { grid-template-columns: 36px minmax(0, 1fr) 36px; gap: 3px; }
+.qcol .stepper input { min-height: 40px; font-size: 19px; padding: 4px 0; }
+.qcol .step { min-height: 40px; font-size: 20px; }
+.qcol .segmented button { min-height: 36px; }
+.qmount { display: grid; justify-items: center; }
+.qmount-ends { display: flex; justify-content: space-between; width: 100%; font-size: 10.5px; color: var(--muted); padding: 0 2px; }
+.qmount-grid { display: grid; grid-template-columns: var(--qh) 16px var(--qh); gap: 4px 10px; }
+.qmount .hole { width: var(--qh); height: var(--qh); border-width: 2px; }
+.qmount .ref { width: 16px; height: var(--qh); border-radius: 6px; }
+#view-record[data-mode="detail"] .memo-btn { display: none; }
+.memo-btn { flex: none; padding: 0 14px; }
 
 /* ---- 板の図（縦置き。上＝ノーズ側・左足、下＝右足） */
 .board { background: var(--board); border: 2px solid var(--board-edge); border-radius: 46% 46% 46% 46% / 9% 9% 9% 9%; padding: 14px 14px 10px; max-width: 360px; margin: 10px auto 0; }

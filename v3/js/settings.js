@@ -2,7 +2,7 @@
 import { h, toast, ask, sheet, segmented, download } from './ui.js';
 import * as S from './store.js';
 
-export const VERSION = '3.1.0';
+export const VERSION = '3.2.0';
 
 export function createSettingsView(app) {
   const root = h('section.view', { id: 'view-settings', 'aria-labelledby': 'settingsTitle' });
