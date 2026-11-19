@@ -15,7 +15,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-VERSION = "v00.01.01"
+VERSION = "v00.02.00"
 AP = argparse.ArgumentParser()
 AP.add_argument("--data", default="snow/latest.json")
 AP.add_argument("--out", default="snow/road_ai.json")
@@ -34,6 +34,16 @@ SYSTEM = """あなたは、スキー場へ車で向かう人に「道路の注�
 - 最後に、必要なら持ち物や行動を1つだけ（例：チェーンを持つ、時間に余裕を持つ）。
 - 前置き・見出し・箇条書き・絵文字は書かない。文章だけを返す。"""
 
+# 危険・天気の言葉 → 事実の中にあるべき根拠の言葉（どれか1つ）
+HAZARDS = {
+    "大雪": ["大雪", "新雪"], "豪雪": ["大雪"], "新雪": ["新雪"], "圧雪": ["圧雪", "新雪"], "積雪": ["新雪", "大雪"],
+    "立ち往生": ["立ち往生"], "除雪": ["除雪"], "チェーン規制": ["チェーン規制"],
+    "吹雪": ["風雪", "暴風雪"], "吹きだまり": ["吹きだまり"], "視界": ["視界", "濃霧"], "霧": ["濃霧", "視界"],
+    "凍結": ["凍結", "冷える"], "アイスバーン": ["アイスバーン", "凍結"], "冷え": ["冷える", "低温"],
+    "強風": ["強風", "突風", "風雪", "暴風"], "突風": ["突風", "風雪", "強風", "暴風"], "暴風": ["暴風"], "風": ["風"],
+    "雨": ["雨"], "なだれ": ["なだれ"], "着雪": ["着雪"], "警戒": ["警戒"], "注意": ["注意"],
+}
+
 BANNED = ["国道", "県道", "号線", "高速", "IC", "インター", "通行止めになっ", "通行止め中", "規制中", "規制が出", "規制されて", "閉鎖"]
 
 
@@ -49,7 +59,7 @@ def facts(spot, today):
         lines.append("今出ている気象庁の警報・注意報：" + "、".join(road["warnings"]))
     days = [d for d in road.get("days", []) if d["date"] >= today][:3]
     for d in days:
-        lv = ["ふだんの冬道", "注意", "警戒"][d.get("level", 0)]
+        lv = "判定できない" if d.get("level") is None else ["ふだんの冬道", "注意", "警戒"][d["level"]]
         pts = "／".join(d.get("points") or []) or "特になし"
         lines.append(f"{label(d['date'])}：{lv}。{pts}")
     return "\n".join(lines), days
@@ -75,6 +85,10 @@ def check(text, fact_text):
     for w in ("今夜", "今朝", "明け方", "追いついていない", "出ています" if "発表中" not in fact_text and "今出ている" not in fact_text else "\0"):
         if w in t and w not in fact_text:
             return f"事実にない言い方「{w}」"
+    # 危険・天気の言葉は、事実にその根拠がある時だけ使える（事実が「ふだんの冬道」なのに「大雪で立ち往生」と書く等を捨てる）
+    for word, grounds in HAZARDS.items():
+        if word in t and not any(g in fact_text for g in grounds):
+            return f"事実にない危険・天気「{word}」"
     extra = numbers(t) - numbers(fact_text) - {"1", "2"}
     if extra:
         return f"事実にない数字 {sorted(extra)}"

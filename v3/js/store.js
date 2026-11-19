@@ -18,7 +18,11 @@ export const OTHER_SOURCES = [
 ];
 
 export const SNOW = ['パウダー', '圧雪', '春雪', 'アイス'];
-export const STANCE = ['ダック', '前振り', '後振り'];
+// スタンスは v2（全版共通）と同じ値で保存し、表示だけ日本語にする
+export const STANCE = [['duck', 'ダック'], ['forward', '前振り'], ['back', '後振り']];
+const STANCE_FROM = { duck: 'duck', forward: 'forward', back: 'back', 'ダック': 'duck', '前振り': 'forward', '後振り': 'back' };
+export const stanceCode = v => STANCE_FROM[String(v ?? '').trim()] || '';   // v3.5.0 までの日本語の値もここで直す
+export const stanceLabel = v => (STANCE.find(([c]) => c === stanceCode(v)) || [, ''])[1];
 export const DISK = ['前', '中', '後'];
 
 export const CHOICES = {
@@ -101,7 +105,7 @@ export function normalizeRecord(x) {
   r.comment = String(r.comment ?? '');
   r.leftAngle = String(r.leftAngle ?? '').trim();
   r.rightAngle = String(r.rightAngle ?? '').trim();
-  r.stance = String(r.stance ?? '');
+  r.stance = stanceCode(r.stance);
   r.stanceWidth = normalizeWidth(r.stanceWidth);
   r.detail = normalizeDetail(r.detail);
   return r;
@@ -161,7 +165,18 @@ export function backupPayload(items) {
 export function parseBackup(json) {
   const items = Array.isArray(json) ? json : json && Array.isArray(json.items) ? json.items : null;
   if (!items) return null;
-  return items.map(normalizeRecord).filter(Boolean);
+  return uniqueIds(items.map(normalizeRecord).filter(Boolean));
+}
+
+// 同じ ID が2つ以上ある時は、2つ目から「-2」「-3」を付けて分ける（古い版のバックアップ対策。上書き復元でも重複を残さない）
+function uniqueIds(items) {
+  const seen = new Set();
+  return items.map(r => {
+    let id = r.id;
+    for (let n = 2; seen.has(id); n++) id = `${r.id}-${n}`;
+    seen.add(id);
+    return id === r.id ? r : { ...r, id };
+  });
 }
 
 const dateKey = r => { const t = Date.parse(r.dateTime); return Number.isFinite(t) ? t : null; };

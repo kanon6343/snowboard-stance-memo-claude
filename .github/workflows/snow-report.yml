@@ -1,14 +1,18 @@
 # 雪山レポート（Claude 試作）: 毎時 snow/ を作り直してコミットする（予報の記録は 5・11・17・23時の枠ごとに1つ）。AI は使わない。
+# GitHub の定時実行は、混雑で遅れたり飛ばされたりする（2026/11/19 は朝の1回のあと7時間以上動かなかった）。
+# そのため 2 つの時刻で予約し、道路の注意（AI 版）とお互いを見張る：相手のデータが古ければ、相手を動かす。
 name: snow-report
 
 on:
   schedule:
-    - cron: "25 * * * *"   # 毎時25分（気象庁の正時の観測が出そろうのを待つ。GitHub の混雑で遅れたり飛ばされたりすることがある）
-  workflow_dispatch: {}      # 手動でも動かせる
+    - cron: "25 * * * *"   # 毎時25分（気象庁の正時の観測が出そろうのを待つ）
+    - cron: "55 * * * *"   # 予備（25分が飛ばされた時のため。同時には動かない）
+  workflow_dispatch: {}      # 手動・見張りから動かす
 
 permissions:
   contents: write
   pages: write     # GITHUB_TOKEN での push では Pages が自動で作り直されないので、下で明示的に頼む
+  actions: write   # 見張り：道路の注意（AI 版）を動かすため
 
 concurrency:
   group: snow-report
@@ -23,24 +27,59 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: 前回から40分たっていなければ作らない（予備の時刻と重なった時）
+        id: fresh
+        run: |
+          python - <<'EOF' >> "$GITHUB_OUTPUT"
+          import json, datetime as dt
+          try:
+              made = dt.datetime.fromisoformat(json.load(open("snow/latest.json", encoding="utf-8"))["made"])
+              age = (dt.datetime.now(dt.timezone.utc) - made).total_seconds() / 60
+          except Exception:
+              age = 9999
+          print("skip=1" if age < 40 and "${{ github.event_name }}" == "schedule" else "skip=0")
+          EOF
       - name: 雪山レポートを作る
+        if: steps.fresh.outputs.skip != '1'
         run: python -B tools/yukiyama.py --out snow --back ../
       - name: 変わっていればコミット
         id: commit
+        if: steps.fresh.outputs.skip != '1'
         run: |
           git config user.name "snow-report-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add snow
           if git diff --cached --quiet; then
             echo "変更なし"
-          else
-            git commit -m "雪山レポートを更新 ($(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M'))"
-            git pull --rebase
-            git push
-            echo "pushed=1" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          git commit -m "雪山レポートを更新 ($(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M'))"
+          ok=0
+          for i in 1 2 3; do
+            if git pull --rebase && git push; then ok=1; break; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 10))
+          done
+          if [ "$ok" != "1" ]; then echo "push に3回失敗しました"; exit 1; fi
+          echo "pushed=1" >> "$GITHUB_OUTPUT"
       - name: Pages を作り直す（公開ページへ反映）
         if: steps.commit.outputs.pushed == '1'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh api -X POST "repos/${{ github.repository }}/pages/builds"
+      - name: 見張り：道路の注意（AI 版）が4時間より古ければ動かす
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          age=$(python - <<'EOF'
+          import json, datetime as dt
+          try:
+              made = dt.datetime.fromisoformat(json.load(open("snow/road_ai.json", encoding="utf-8"))["made"])
+              print(int((dt.datetime.now(dt.timezone.utc) - made).total_seconds() / 60))
+          except Exception:
+              print(9999)
+          EOF
+          )
+          echo "道路の注意（AI 版）は ${age} 分前"
+          if [ "$age" -gt 240 ]; then gh workflow run road-ai.yml --ref main || echo "動かせませんでした"; fi

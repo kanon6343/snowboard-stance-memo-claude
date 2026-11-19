@@ -103,7 +103,7 @@ export function createHistoryView(app) {
     const on = [];
     const clear = key => () => { filter[key] = blankFilter()[key]; render(); };
     if (filter.snow) on.push([filter.snow, clear('snow')]);
-    if (filter.stance) on.push([filter.stance, clear('stance')]);
+    if (filter.stance) on.push([S.stanceLabel(filter.stance), clear('stance')]);
     if (filter.fav) on.push(['★のみ', clear('fav')]);
     if (filter.la !== '' || filter.ra !== '') on.push([`角度 ${filter.la || '—'}° / ${filter.ra || '—'}° ±${filter.tol}`, () => { filter.la = filter.ra = ''; render(); }]);
     chips.replaceChildren(...on.map(([t, fn]) => h('button.chip', { type: 'button', onclick: fn, 'aria-label': `${t} を外す` }, t, ' ×')));
@@ -113,7 +113,7 @@ export function createHistoryView(app) {
   function card(r) {
     const dir = app.settings.stanceDir;
     const angles = h('p.angles', h('span', h('small', '左'), signed(r.leftAngle)), h('span', h('small', '右'), signed(r.rightAngle)));
-    const meta = [r.snow, r.stance, r.stanceWidth ? `幅 ${r.stanceWidth}cm` : '', r.disk.left || r.disk.right ? `ディスク ${r.disk.left || '—'}/${r.disk.right || '—'}` : ''].filter(Boolean);
+    const meta = [r.snow, S.stanceLabel(r.stance), r.stanceWidth ? `幅 ${r.stanceWidth}cm` : '', r.disk.left || r.disk.right ? `ディスク ${r.disk.left || '—'}/${r.disk.right || '—'}` : ''].filter(Boolean);
     return h('article.record', { dataset: { id: r.id } },
       h('button.record-main', { type: 'button', onclick: () => openDetail(r.id), 'aria-label': `${r.board || '板名なし'} ${fmtDate(r.dateTime)} の詳細` },
         h('div.record-top', h('span.date', fmtDate(r.dateTime)), r.favorite ? h('span.star', { 'aria-label': 'お気に入り' }, '★') : null, S.hasDetail(r.detail) ? h('span.tag', '詳細') : null),
@@ -141,7 +141,7 @@ export function createHistoryView(app) {
     const r = find(id);
     if (!r) { toast('この記録が見つかりません。', 'error'); render(); return; }
     const rows = [
-      ['日時', fmtDate(r.dateTime)], ['雪質', r.snow || '—'], ['スタンス', [r.stance, r.stanceWidth ? `幅 ${r.stanceWidth}cm` : ''].filter(Boolean).join(' · ') || '—'],
+      ['日時', fmtDate(r.dateTime)], ['雪質', r.snow || '—'], ['スタンス', [S.stanceLabel(r.stance), r.stanceWidth ? `幅 ${r.stanceWidth}cm` : ''].filter(Boolean).join(' · ') || '—'],
       ['角度', `左 ${signed(r.leftAngle)} / 右 ${signed(r.rightAngle)}`], ['ディスク', `左 ${r.disk.left || '—'} / 右 ${r.disk.right || '—'}`],
       ['ビス穴', `左 ${r.holes.left.length}個 / 右 ${r.holes.right.length}個`],
       ...detailRows(r.detail),
@@ -192,7 +192,7 @@ export function createHistoryView(app) {
     const num = (key, label, attrs = {}) => h('label.field', h('span.field-label', label), h('input', { type: 'number', inputmode: 'decimal', value: draft[key], ...attrs, oninput: e => (draft[key] = e.target.value.trim()) }));
     const body = h('div.filter-form',
       h('div.field', h('span.field-label', '雪質'), segmented(S.SNOW.map(s => [s, s]), draft.snow, v => (draft.snow = v))),
-      h('div.field', h('span.field-label', 'スタンス'), segmented(S.STANCE.map(s => [s, s]), draft.stance, v => (draft.stance = v))),
+      h('div.field', h('span.field-label', 'スタンス'), segmented(S.STANCE, draft.stance, v => (draft.stance = v))),
       h('label.check', h('input', { type: 'checkbox', checked: draft.fav, onchange: e => (draft.fav = e.target.checked) }), ' ★の記録だけ'),
       h('fieldset.angles-filter', h('legend', '角度が近い記録'), h('div.grid3', num('la', '左足', { placeholder: '15' }), num('ra', '右足', { placeholder: '-9' }), num('tol', '±', { min: '0', step: '1' }))));
     const dlg = sheet('絞り込み', body, { actions: [

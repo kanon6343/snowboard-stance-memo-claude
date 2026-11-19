@@ -18,6 +18,7 @@ export function createRecordView(app) {
   const restored = S.readJSON(S.KEYS.draft, null);
   if (restored && restored.state) {
     st = { ...blank(), ...restored.state, detail: S.normalizeDetail(restored.state.detail) };
+    st.stance = S.stanceCode(st.stance);   // 古い下書きの日本語の値も直す
     editing = restored.editing || null;
   }
 
@@ -75,7 +76,7 @@ export function createRecordView(app) {
     h('button.btn.small.ghost', { type: 'button', onclick: applyShapeToHistory }, '同じ板の記録すべてに、この形状を反映…')));
 
   // ---- スタンス
-  const stanceSeg = segmented(S.STANCE.map(s => [s, s]), st.stance, v => { st.stance = v; changed(); }, { label: 'スタンス' });
+  const stanceSeg = segmented(S.STANCE, st.stance, v => { st.stance = v; changed(); }, { label: 'スタンス' });
   const widthInput = track(input(() => st.stanceWidth, v => (st.stanceWidth = v.trim()), { type: 'number', inputmode: 'decimal', min: '0', step: '0.5', placeholder: '53' }));
   const dirSeg = segmented([['regular', 'レギュラー'], ['goofy', 'グーフィー']], app.settings.stanceDir, v => { app.setSetting({ stanceDir: v }); applyDir(); }, { allowEmpty: false, label: '前足' });
   const cardStance = h('section.card', h('h2', 'スタンス'),
@@ -148,7 +149,7 @@ export function createRecordView(app) {
   quick = (() => {
     const qBoard = track(input(() => st.board, v => (st.board = v), { type: 'text', list: 'boardNames', maxlength: '80', placeholder: '板の名前', autocomplete: 'off', 'aria-label': '板' }));
     const qSnow = segmented(S.SNOW.map(s => [s, s]), st.snow, v => { st.snow = v; changed(); }, { label: '雪質' });
-    const qStance = segmented(S.STANCE.map(s => [s, s]), st.stance, v => { st.stance = v; changed(); }, { label: 'スタンス' });
+    const qStance = segmented(S.STANCE, st.stance, v => { st.stance = v; changed(); }, { label: 'スタンス' });
     const qWidth = track(input(() => st.stanceWidth, v => (st.stanceWidth = v.trim()), { type: 'number', inputmode: 'decimal', min: '0', step: '0.5', placeholder: '幅', 'aria-label': 'スタンス幅（cm）' }));
     const disks = {}, mounts = {}, heads = {};
     const col = s => {
@@ -197,15 +198,18 @@ export function createRecordView(app) {
   for (const c of [cardBoard, cardStance, cardFeet, cardHoles, cardMemo]) c.classList.add('detail-only');
 
   // ---- 表示の更新
+  // 簡易と詳細は別の入力欄を持つので、切り替えたら全部の欄を今の値に揃える（見えている値と保存する値をずらさない）
   function applyMode() {
     root.dataset.mode = app.settings.mode;
     modeSwitch.set(app.settings.mode);
+    syncAll();
   }
   // 角度・調整の欄は、スタンスに関係なくいつも「左足・右足」の順（入力する場所が変わらないように）。図だけ前足に合わせる
   function applyDir() {
     dirSeg.set(app.settings.stanceDir);
     if (!feetBox.childElementCount) { feetBox.append(feetCols.left, feetCols.right); gearBox.append(gearCols.left, gearCols.right); }
     board.paint();
+    quick?.refresh();   // 簡易入力の図（前足・つま先の向き）も描き直す
   }
   function syncAll() {
     syncers.forEach(s => s.sync());
@@ -239,6 +243,7 @@ export function createRecordView(app) {
     if (st.stanceWidth !== '' && S.normalizeWidth(st.stanceWidth) === '') { toast('スタンス幅は 0 より大きい数で入れてください（cm）。', 'error'); widthInput.focus(); return; }
     for (const [k, label] of [['leftAngle', '左足'], ['rightAngle', '右足']]) {
       if (st[k] !== '' && !Number.isFinite(Number(st[k]))) { toast(`${label}の角度を数で入れてください。`, 'error'); return; }
+      if (st[k] !== '' && Math.abs(Number(st[k])) > 60) { toast(`${label}の角度は −60〜+60° で入れてください。`, 'error'); return; }
     }
     const rec = toRecord();
     let res;
@@ -315,5 +320,7 @@ export function createRecordView(app) {
   }
 
   applyMode(); applyDir(); syncAll();
-  return { el: root, applyDir, load, refreshBoards, isEditing: () => !!editing, hasInput: () => !isEmpty() || !!editing, restored: !!(restored && restored.state) };
+  // 記録画面に戻るたびに、設定画面で変えた入力モード・前足を反映する
+  const show = () => { applyMode(); applyDir(); };
+  return { el: root, show, applyDir, load, refreshBoards, isEditing: () => !!editing, hasInput: () => !isEmpty() || !!editing, restored: !!(restored && restored.state) };
 }

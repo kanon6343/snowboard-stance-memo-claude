@@ -31,6 +31,9 @@ export function evalDay(day) {
   const med = day?.snow?.med ?? 0;
   const fresh = dd.snow_am !== null && dd.snow_am !== undefined ? (med + dd.snow_am) / 2 : med;
   const flags = [], out = [];
+  // 雨・風・雲・視界のどれかが欠けている日は、比べられないのでおすすめから外す（欠けた値を穏やかな天気とみなさない）
+  const missing = !day?.day || ['rain', 'gust', 'cloud', 'lowvis'].some(k => dd[k] === null || dd[k] === undefined);
+  if (missing) out.push('日中の天気データが足りない');
   if ((dd.rain ?? 0) >= 2) { out.push(`日中に雨 ${dd.rain}mm`); }
   if ((dd.gust ?? 0) >= 17) out.push(`突風 ${r0(dd.gust)}m/s（リフトが止まるかも）`);
   else if ((dd.gust ?? 0) >= 12 || (dd.wind ?? 0) >= 9) flags.push(`風が強め（最大 ${r0(dd.gust ?? dd.wind)}m/s）`);
@@ -40,7 +43,7 @@ export function evalDay(day) {
   const sun = dd.cloud === null || dd.cloud === undefined ? 0.4 : 1 - dd.cloud / 100;
   const calm = 1 - clamp(((dd.gust ?? 8) - 8) / 12);
   const snow = clamp(fresh / 25);
-  return { fresh, sun, calm, snow, flags, out, dd, day };
+  return { fresh, sun, calm, snow, flags, out, dd, day, missing };
 }
 const SCORE = {
   balance: e => 0.5 * e.snow + 0.3 * e.sun + 0.2 * e.calm,
@@ -289,8 +292,8 @@ export function createSnowView(app) {
       h('div.road-pair',
         h('div.road-col',
           h('h4', 'ルールで作った注意'),
-          h('ul.road-days', road.days.slice(0, 4).map(d => h('li.lv' + (d.level || 0),
-            h('strong', dayLabel(d.date)), h('span.road-lv', ROAD_LEVEL[d.level || 0]),
+          h('ul.road-days', road.days.slice(0, 4).map(d => h('li.lv' + (d.level ?? 'x'),
+            h('strong', dayLabel(d.date)), h('span.road-lv', d.level === null || d.level === undefined ? '判定できない' : ROAD_LEVEL[d.level]),
             d.points?.length ? h('span.road-points', d.points.join('／')) : null)))),
         h('div.road-col.ai',
           h('h4', 'AI がまとめた注意'),

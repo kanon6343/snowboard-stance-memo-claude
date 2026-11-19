@@ -1,11 +1,13 @@
 # 道路の注意の「AI 版」（Claude 試作）。GitHub Actions のマシンの中で小さな AI（Ollama + Qwen2.5 3B）を動かす。
 # 外部の AI サービス・API キーは使わない（GitHub Models は 2026/7/30 に終了）。公開リポジトリの Actions は無料。
 # 入力は snow/latest.json のルール版の事実だけ。規制情報は扱わない。出力は snow/road_ai.json。
+# 見張り：雪山レポート（latest.json）が90分より古ければ、雪山レポートを動かす（GitHub の定時実行が飛ばされた時のため）。
 name: road-ai
 
 on:
   schedule:
     - cron: "50 */3 * * *"   # 3時間ごと（雪山レポートの更新のあと）
+    - cron: "10 1-23/3 * * *"   # 予備
   workflow_dispatch: {}
   push:
     branches: [main]
@@ -16,6 +18,7 @@ on:
 permissions:
   contents: write
   pages: write
+  actions: write   # 見張り：雪山レポートを動かすため
 
 concurrency:
   group: road-ai
@@ -32,6 +35,21 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: 見張り：雪山レポートが90分より古ければ動かす
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          age=$(python - <<'EOF'
+          import json, datetime as dt
+          try:
+              made = dt.datetime.fromisoformat(json.load(open("snow/latest.json", encoding="utf-8"))["made"])
+              print(int((dt.datetime.now(dt.timezone.utc) - made).total_seconds() / 60))
+          except Exception:
+              print(9999)
+          EOF
+          )
+          echo "雪山レポートは ${age} 分前"
+          if [ "$age" -gt 90 ]; then gh workflow run snow-report.yml --ref main || echo "動かせませんでした"; fi
       - name: AI のモデルを前回から引き継ぐ（毎回ダウンロードしないため）
         uses: actions/cache@v4
         with:
@@ -43,6 +61,7 @@ jobs:
           sudo systemctl stop ollama || true
           (OLLAMA_MODELS="$HOME/.ollama/models" ollama serve > /tmp/ollama.log 2>&1 &)
           for i in $(seq 1 30); do curl -fs http://127.0.0.1:11434/api/tags > /dev/null && break; sleep 2; done
+          ollama --version || true
           OLLAMA_MODELS="$HOME/.ollama/models" ollama pull "$MODEL"
       - name: 道路の注意を AI で書く
         run: python -B tools/road_ai.py --data snow/latest.json --out snow/road_ai.json --model "$MODEL"
@@ -54,11 +73,17 @@ jobs:
           git add snow/road_ai.json
           if git diff --cached --quiet; then
             echo "変更なし"
-          else
-            git commit -m "道路の注意（AI 版）を更新 ($(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M'))"
-            for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done
-            echo "pushed=1" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          git commit -m "道路の注意（AI 版）を更新 ($(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M'))"
+          ok=0
+          for i in 1 2 3; do
+            if git pull --rebase && git push; then ok=1; break; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 10))
+          done
+          if [ "$ok" != "1" ]; then echo "push に3回失敗しました"; exit 1; fi
+          echo "pushed=1" >> "$GITHUB_OUTPUT"
       - name: Pages を作り直す
         if: steps.commit.outputs.pushed == '1'
         env:

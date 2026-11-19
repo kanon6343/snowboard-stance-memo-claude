@@ -17,7 +17,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-VERSION = "v00.07.00"
+VERSION = "v00.08.00"
 ARGS = argparse.ArgumentParser(description="雪山レポート")
 ARGS.add_argument("--out", default="snow", help="resorts.json があり、報告を書き出すフォルダ")
 ARGS.add_argument("--back", default="", help="戻るリンクの行き先（例 ../ でスタンスメモへ）")
@@ -218,7 +218,7 @@ def daytime_all(resorts, days=7):
         per = {}
         for t, temp, rain, shw, snow, wind, gust, cloud, vis, code in rows:
             date, hour = t[:10], int(t[11:13])
-            day = per.setdefault(date, {"wind": [], "gust": [], "rain": 0.0, "cloud": [], "vis": [], "codes": [], "temp": [], "n": 0})
+            day = per.setdefault(date, {"wind": [], "gust": [], "rain": [], "cloud": [], "vis": [], "codes": [], "temp": [], "n": 0})
             if 9 <= hour <= 15:
                 day["n"] += 1
                 if wind is not None: day["wind"].append(wind)
@@ -227,27 +227,35 @@ def daytime_all(resorts, days=7):
                 if vis is not None: day["vis"].append(vis)
                 if code is not None: day["codes"].append(code)
                 if temp is not None: day["temp"].append(temp)
-                day["rain"] += (rain or 0) + ((shw or 0) if temp is not None and temp > 1 else 0)
-        # 朝までの新雪：前日9時〜当日9時（滑る日の朝の雪）
+                # 雨は、雨とにわか（と気温）がそろった時間だけ数える。欠けた時間を 0 として足さない
+                if rain is not None and shw is not None and temp is not None:
+                    day["rain"].append(rain + (shw if temp > 1 else 0))
+        # 朝までの新雪：前日9時より後〜当日9時（Open-Meteo の snowfall は「その時刻までの1時間」の量）
+        # 9時の値を含む24時間分。1時間でも欠けていたら出さない（0 とは書かない）
         snow_by = {}
         times = [x[0] for x in rows]
-        snows = [x[4] or 0 for x in rows]
+        snows = [x[4] for x in rows]
         for i, t in enumerate(times):
-            if t[11:13] == "09":
-                snow_by[t[:10]] = round(sum(snows[max(0, i - 24):i]), 1)
+            if t[11:13] == "09" and i >= 23:
+                window = snows[i - 23:i + 1]
+                if len(window) == 24 and all(v is not None for v in window):
+                    snow_by[t[:10]] = round(sum(window), 1)
         res = {}
+        need = 6   # 日中 9〜15時の7時間のうち、6時間以上そろった項目だけを使う
         for date, v in per.items():
             if v["n"] < 4:
                 continue
-            res[date] = {"wind": round(max(v["wind"]), 1) if v["wind"] else None,
-                         "gust": round(max(v["gust"]), 1) if v["gust"] else None,
-                         "rain": round(v["rain"], 1),
-                         "cloud": round(sum(v["cloud"]) / len(v["cloud"])) if v["cloud"] else None,
-                         "lowvis": sum(1 for x in v["vis"] if x < 1000),
+            ok = {k: len(v[k]) >= need for k in ("wind", "gust", "rain", "cloud", "vis", "temp")}
+            res[date] = {"wind": round(max(v["wind"]), 1) if ok["wind"] else None,
+                         "gust": round(max(v["gust"]), 1) if ok["gust"] else None,
+                         "rain": round(sum(v["rain"]), 1) if ok["rain"] else None,
+                         "cloud": round(sum(v["cloud"]) / len(v["cloud"])) if ok["cloud"] else None,
+                         "lowvis": sum(1 for x in v["vis"] if x < 1000) if ok["vis"] else None,
                          "code": max(set(v["codes"]), key=v["codes"].count) if v["codes"] else None,
-                         "tmax": round(max(v["temp"]), 1) if v["temp"] else None,
-                         "tmin": round(min(v["temp"]), 1) if v["temp"] else None,
-                         "snow_am": snow_by.get(date)}
+                         "tmax": round(max(v["temp"]), 1) if ok["temp"] else None,
+                         "tmin": round(min(v["temp"]), 1) if ok["temp"] else None,
+                         "snow_am": snow_by.get(date),
+                         "complete": all(ok.values())}
         out[r["id"]] = res
     return out
 
@@ -280,16 +288,22 @@ def jma_warnings(offices):
 
 
 def road_rules(day, prev_day, warn_codes=()):
-    """1日分の「道路の注意」。level 0=ふだんの冬道 1=注意 2=警戒。points は理由（短い文）"""
+    """1日分の「道路の注意」。level 0=ふだんの冬道 1=注意 2=警戒、None=判定できない（日中の天気データがない）。
+    points は理由（短い文）。データが欠けている時に「ふだんの冬道」と言わない。"""
     dd = (day or {}).get("day") or {}
     pdd = (prev_day or {}).get("day") or {}
+    if not dd or dd.get("tmin") is None or dd.get("gust") is None or dd.get("rain") is None:
+        points = [f"{WARN_NAMES[c]}が出ている" for c in warn_codes]
+        if warn_codes:   # 警報・注意報は天気データがなくても使える
+            return {"level": 2 if any(c in WARN_HIGH for c in warn_codes) else 1, "points": points + ["日中の天気データが足りず、ほかは判定できない"]}
+        return {"level": None, "points": ["日中の天気データが足りず、判定できない"]}
     level, points = 0, []
     def add(lv, text):
         nonlocal level
         level = max(level, lv)
         points.append(text)
     snow = dd.get("snow_am")
-    tmin, gust, rain = dd.get("tmin"), dd.get("gust"), dd.get("rain") or 0
+    tmin, gust, rain = dd.get("tmin"), dd.get("gust"), dd.get("rain")
     if snow is not None and snow >= 20:
         add(2, f"朝までに新雪{round(snow)}cm：除雪が追いつかず、チェーン規制や立ち往生のおそれ")
     elif snow is not None and snow >= 5:

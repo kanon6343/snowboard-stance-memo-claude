@@ -6,8 +6,11 @@ export function h(tag, props, ...children) {
   const el = document.createElement(name || 'div');
   if (classes.length) el.className = classes.join(' ');
   if (props && (typeof props !== 'object' || props instanceof Node || Array.isArray(props))) { children.unshift(props); props = null; }
+  let value;
   for (const [k, v] of Object.entries(props || {})) {
     if (v === undefined || v === null || v === false) continue;
+    // value は属性ではなくプロパティで入れる（textarea は属性では中身にならない。select は選択肢を入れた後に）
+    if (k === 'value' && name !== 'option') { value = v; continue; }
     if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
     else if (k === 'class') el.className += (el.className ? ' ' : '') + v;
     else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
@@ -16,6 +19,7 @@ export function h(tag, props, ...children) {
     else el.setAttribute(k, v === true ? '' : v);
   }
   append(el, children);
+  if (value !== undefined) el.value = value;
   return el;
 }
 function append(el, children) {

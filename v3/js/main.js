@@ -84,8 +84,10 @@ app.applyUpdate = () => {
 function setupPwa() {
   window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; });
   if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
+  // 読み直すのは「更新」の時だけ。初めて開いた時（まだ Service Worker が付いていない）にも controllerchange が起きるので、それでは読み直さない
+  const hadController = !!navigator.serviceWorker.controller;
   let reloading = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloading) { reloading = true; location.reload(); } });
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloading) { reloading = true; location.reload(); } });
   navigator.serviceWorker.register('./sw.js', { scope: './' }).then(reg => {
     swReg = reg;
     const mark = () => { if (reg.waiting && navigator.serviceWorker.controller) { app.updateState = 'waiting'; app.views.settings.renderUpdate('waiting'); toast('新しい版があります。設定から更新できます。'); } };
