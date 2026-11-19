@@ -1,6 +1,6 @@
 /* Detail-mode history presentation. Reads records; never mutates or persists them. */
 const DetailHistoryData = (() => {
-  const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const escape = escapeHtml;
   const text=value=>typeof value==='string'?value.trim():'';
   const number=value=>(typeof value==='number'||typeof value==='string')&&String(value).trim()!==''&&Number.isFinite(Number(value))?String(value):'';
   const angle=value=>number(value)===''?'未入力':number(value)+'°';

@@ -1,11 +1,4 @@
-// Formal app: detailed features with a storage namespace separate from every older version.
-const IS_DETAIL = true;
-const IS_HARU = false;
-const IS_DEV = false;
-const KEY_PREFIX = "claude:";
-const KEY = `${KEY_PREFIX}snowboard-history-v1`;
-const UI_KEY = `${KEY_PREFIX}snowboard-ui-v1`;
-const VIEW_KEY = `${KEY_PREFIX}last-view-v1`;
+// 保存キー（claude:）・escapeHtml・履歴の読み書きは common.js にある
 
 // ===== DOM =====
 const holes = [...document.querySelectorAll(".hole")];
@@ -492,11 +485,6 @@ function setupCompactEditor() {
   syncEditorSummary();
 }
 
-function readHistorySnapshot() {
-  const raw = localStorage.getItem(KEY), items = JSON.parse(raw === null ? "[]" : raw);
-  if (!Array.isArray(items) || items.some(item => !item || typeof item !== "object" || Array.isArray(item))) throw new Error("Invalid history");
-  return { raw, items };
-}
 function historyStorageNotice(message) {
   const notice = document.getElementById("historyStorageIssue");
   if (notice) { notice.hidden = false; document.getElementById("historyStorageMessage").textContent = message; }
@@ -1809,15 +1797,6 @@ function getHolesAsV1(item){
 }
 
 // ===== utils =====
-function escapeHtml(str) {
-  return String(str)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
 function formatDateJP(iso){
   const d = new Date(iso);
   const y = d.getFullYear();

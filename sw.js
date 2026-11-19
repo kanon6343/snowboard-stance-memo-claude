@@ -1,13 +1,13 @@
 /* Release shell: bump RELEASE and every versioned index.html asset together. */
-const RELEASE = '1094';
-const APP_VERSION = '2.5.2';
-const RELEASE_NOTES = ["並び替えモードで、左右の足の中身（角度・ディスク／ディスクの詳細／ビス穴）も順番を変えられるようにしました。左右とも同じ順番になります。"];
+const RELEASE = '1095';
+const APP_VERSION = '2.5.3';
+const RELEASE_NOTES = ["アプリを軽くしました。アイコン画像を約1/9にして、更新のたびに取り直す量を約400KB減らしました。","重なっていた処理（履歴の読み書きなど）を1か所にまとめ、使っていない古いスタイルを消しました。見た目と使い方は変わりません。"];
 const BASE = new URL('./', self.registration.scope);
 const CACHE_PREFIX = `snowboard-stance-claude:${BASE.href}:`;
 const CACHE_NAME = `${CACHE_PREFIX}${RELEASE}`;
 const SHELL = [
   'index.html', `style.css?v=${RELEASE}`, `outdoor.css?v=${RELEASE}`,
-  `theme.css?v=${RELEASE}`, `theme.js?v=${RELEASE}`, `script.js?v=${RELEASE}`,
+  `theme.css?v=${RELEASE}`, `theme.js?v=${RELEASE}`, `common.js?v=${RELEASE}`, `script.js?v=${RELEASE}`,
   `pwa.css?v=${RELEASE}`, `pwa.js?v=${RELEASE}`, 'manifest.webmanifest',
   `board-suggestions.css?v=${RELEASE}`, `board-suggestions.js?v=${RELEASE}`,
   `detail.css?v=${RELEASE}`, `detail.js?v=${RELEASE}`,

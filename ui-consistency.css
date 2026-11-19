@@ -101,7 +101,7 @@
 :root[data-input-mode="detail"] :is(#history,#tutorialHistoryRecords) :is(.dh-head h3,.dh-board-head h3){font-size:20px;font-weight:750;line-height:1.4}
 :root[data-input-mode="detail"] :is(#history,#tutorialHistoryRecords) .dh-date{font-size:13px;font-weight:500;line-height:1.5}
 :root[data-input-mode="detail"] :is(#history,#tutorialHistoryRecords) .dh-meta{font-size:13px;font-weight:400;line-height:1.5}
-:root[data-input-mode="detail"] :is(#history,#tutorialHistoryRecords) :is(.dh-mini-label,.dh-mini-note,.dh-shapes,.dh-setback,.dh-binding,.dh-change,.dh-board-head p,.dh-details>summary>span,.dh-stat small){
+:root[data-input-mode="detail"] :is(#history,#tutorialHistoryRecords) :is(.dh-mini-label,.dh-mini-note,.dh-shapes,.dh-setback,.dh-change,.dh-board-head p,.dh-details>summary>span,.dh-stat small){
   font-size:var(--ui-note-size);line-height:1.5;color:var(--outdoor-muted);
 }
 :root[data-input-mode="detail"] :is(#history,#tutorialHistoryRecords) :is(.dh-settings caption,.dh-details>summary){font-family:var(--ui-font);font-size:var(--ui-label-size);font-weight:var(--ui-label-weight);line-height:1.4}

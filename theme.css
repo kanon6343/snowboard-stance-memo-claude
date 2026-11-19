@@ -19,7 +19,7 @@
 }
 :root[data-theme="dark"] body{ background: var(--night-bg); }
 :root[data-theme="dark"] .card{ background: var(--night-card); border-color: #627988; box-shadow: none; }
-:root[data-theme="dark"] .haru-badge{ background: #3c3153; color: #e7d8ff; }
+
 :root[data-theme="dark"] :is(.menu-btn, .setup-meta input, .setup-meta select, .setup-card .angle input,
   .stance-width input, .comment-details textarea, .setup-card .stance-quick button, .setup-card .chip,
   .comment-clear),
@@ -59,14 +59,14 @@
 :root[data-theme="dark"] #menuPanel .menu-head{ background: var(--night-card); border-color: #627988; }
 :root[data-theme="dark"] #menuPanel .menu-card{ background: var(--night-card); border-color: #627988; }
 :root[data-theme="dark"] #menuPanel :is(.menu-close, .sort-select, .menu-side-select, .angle-in, .angle-tol,
-  .stance-tab, .menu-action, .dev-btn, .import-preview){ color: var(--outdoor-ink); background: var(--night-field); }
+  .stance-tab, .menu-action, .import-preview){ color: var(--outdoor-ink); background: var(--night-field); }
 :root[data-theme="dark"] #menuPanel .stance-tab.active{ color: var(--night-on-accent); background: var(--outdoor-blue); }
 :root[data-theme="dark"] #menuPanel :is(.menu-primary, .menu-primary .menu-action-note){ color: var(--night-on-accent); background: var(--outdoor-green); }
 :root[data-theme="dark"] #menuPanel .angle-clear{ color: var(--outdoor-blue); background: var(--night-raised); }
 :root[data-theme="dark"] #menuPanel #btnFilterClear{ color: var(--outdoor-ink); background: var(--night-raised); }
 :root[data-theme="dark"] #menuPanel .import-file::file-selector-button{ background: var(--night-field); color: var(--outdoor-ink); }
-:root[data-theme="dark"] #menuPanel .dev-footer{ background: #2c2840; }
-:root[data-theme="dark"] #menuPanel :is(.menu-action.danger, .dev-btn.danger){ background: #381f28; color: var(--red); }
+
+:root[data-theme="dark"] #menuPanel .menu-action.danger{ background: #381f28; color: var(--red); }
 :root[data-theme="dark"] #menuPanel .menu-action:disabled{ color: var(--outdoor-muted); background: var(--night-raised); border-color: var(--outdoor-border); }
 :root[data-theme="dark"] #menuPanel .menu-disclosure > summary:hover{ background: var(--night-raised); }
 :root[data-theme="dark"] :is(#toast.success, #toast.rode, #toast.star){ color: var(--night-on-accent); }

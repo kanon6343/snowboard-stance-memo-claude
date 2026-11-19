@@ -26,7 +26,7 @@ const HistoryStats = (() => {
       boards:[...boards.values()].map(b=>({...b,angles:rank(b.angles),widths:rank(b.widths)})).sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name,'ja')),
       angles:rank(angles),widths:rank(widths),snow:rank(snow),stance:rank(stance)};
   }
-  const escape = value => String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const escape = escapeHtml;
   function ranking(rows,limit=5){
     if(!rows.length)return '<p class="stats-note">集計できる入力がありません。</p>';
     return `<ol class="stats-ranking">${rows.slice(0,limit).map(row=>`<li><span>${escape(row.label)}</span><b>${row.count}<small>件</small></b></li>`).join('')}</ol>`;
@@ -50,9 +50,7 @@ const HistoryStats = (() => {
   const byId=id=>document.getElementById(id),dialog=byId('historyStatsDialog');
   function draw(){
     try{
-      const raw=localStorage.getItem(KEY),items=JSON.parse(raw===null?'[]':raw);
-      if(!Array.isArray(items))throw new Error('Invalid history');
-      byId('historyStatsContent').innerHTML=markup(summarize(items));
+      byId('historyStatsContent').innerHTML=markup(summarize(readHistorySnapshot().items));
     }catch{byId('historyStatsContent').textContent='保存履歴を読み込めませんでした。履歴は変更していません。';}
   }
   function open(){byId('menuCloseBtn')?.click();draw();dialog.showModal();dialog.scrollTop=0;}

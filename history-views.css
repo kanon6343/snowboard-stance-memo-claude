@@ -30,7 +30,7 @@
 .dh-history .dh-stance{display:inline-block;border:1px solid var(--dh-orange-line);border-radius:6px;background:var(--dh-soft-orange);padding:3px 7px;color:var(--dh-ink);font-size:12px;font-weight:700}
 .dh-history .dh-width{font-size:19px;font-weight:750;white-space:nowrap}
 .dh-history .dh-width small{font-size:12px;font-weight:500}
-.dh-history .dh-setback,.dh-history .dh-binding{margin:4px 0;color:var(--dh-muted);font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.dh-history .dh-setback{margin:4px 0;color:var(--dh-muted);font-size:12px;line-height:1.5;overflow-wrap:anywhere}
 .dh-history .dh-note{margin:10px 0;padding:10px 12px;border-radius:8px;background:var(--dh-field);color:var(--dh-ink);font-size:14px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
 .dh-history .dh-note>span{display:block;margin-bottom:3px;color:var(--dh-muted);font-size:12px;font-weight:650}
 .dh-history .dh-settings{width:100%;table-layout:fixed;border-collapse:collapse;margin:4px 0 10px;font-size:14px;line-height:1.5}

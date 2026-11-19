@@ -24,7 +24,7 @@ button, input, select, textarea{ font-family: inherit; }
 button{ color: var(--outdoor-ink); }
 input::placeholder, textarea::placeholder{ color: var(--outdoor-placeholder); opacity: 1; font-weight: 400; }
 .title{ font-size: 22px; font-weight: 800; }
-.haru-badge{ color: #50316c; background: #efe5fa; font-size: 11px; font-weight: 700; }
+
 .card{ background: #fff; border-color: #a3b2ba; box-shadow: 0 3px 12px #152d3b0b; }
 .menu-btn{ width: 44px; height: 44px; border: 2px solid var(--outdoor-border); box-shadow: none; }
 .view-tabs, .foot-tabs{ background: #dfe9ee; gap: 4px; }
@@ -91,9 +91,7 @@ input::placeholder, textarea::placeholder{ color: var(--outdoor-placeholder); op
 .editor-actions #saveBtn, .editor-actions #clearBtn{ min-height: 48px; font-size: 16px; border-width: 2px; }
 .editor-actions #saveBtn{ color: #fff; background: var(--outdoor-green); border-color: var(--outdoor-green); }
 .editor-actions #clearBtn{ color: var(--outdoor-ink); background: #fff; border-color: var(--outdoor-border); }
-.history-heading{ gap: 10px; }
-.history-heading p, .history-hint{ color: var(--outdoor-muted); font-size: 14px; line-height: 1.5; }
-.history-heading h2{ font-size: 22px; }
+
 .tabs-bar{ grid-template-columns: minmax(0, 1fr); grid-template-areas: "boards"; }
 .tabs{ min-width: 0; max-width: 100%; gap: 8px; padding-bottom: 5px; }
 .tab{ flex-shrink: 0; min-height: 44px; max-width: min(100%, 240px); overflow: hidden; text-overflow: ellipsis; font-size: 14px; font-weight: 650; border: 2px solid var(--outdoor-border); }
@@ -153,8 +151,7 @@ input::placeholder, textarea::placeholder{ color: var(--outdoor-placeholder); op
 #menuPanel .menu-close{ width: 48px; height: 48px; color: var(--outdoor-ink); background: #fff; border: 2px solid var(--outdoor-border); }
 #menuPanel .menu-section-note, #menuPanel .menu-note, #menuPanel .menu-label,
 #menuPanel .menu-position-label, #menuPanel .menu-disclosure > summary small,
-#menuPanel .menu-action-note, #menuPanel .import-title, #menuPanel .import-muted,
-#menuPanel .dev-note, #menuPanel .dev-footer summary small{ color: var(--outdoor-muted); font-size: 13px; line-height: 1.5; opacity: 1; }
+#menuPanel .menu-action-note, #menuPanel .import-title, #menuPanel .import-muted{ color: var(--outdoor-muted); font-size: 13px; line-height: 1.5; opacity: 1; }
 #menuPanel .menu-label, #menuPanel .menu-position-label{ font-size: 14px; font-weight: 650; }
 #menuPanel .angle-filter label{ color: var(--outdoor-muted); font-size: 13px; }
 #menuPanel .sort-select, #menuPanel .menu-side-select, #menuPanel .angle-in, #menuPanel .angle-tol{
@@ -168,7 +165,7 @@ input::placeholder, textarea::placeholder{ color: var(--outdoor-placeholder); op
 #menuPanel .stance-tab.active{ color: #fff; background: var(--outdoor-blue); border-color: var(--outdoor-blue); padding: 8px 1px; }
 #menuPanel .stance-tab.active::after{ content: "✓"; position: absolute; top: 1px; right: 3px; font-size: 10px; font-weight: 900; }
 #menuPanel .angle-clear{ min-height: 44px; color: var(--outdoor-blue); background: #e7f0f5; font-size: 14px; font-weight: 700; }
-#menuPanel .menu-action, #menuPanel .dev-btn{
+#menuPanel .menu-action{
   min-height: 48px; color: var(--outdoor-ink); background: #fff; border: 2px solid var(--outdoor-border); font-size: 14px;
 }
 #menuPanel #btnFilterClear{ color: var(--outdoor-ink); background: #e7eff3; border: 2px solid var(--outdoor-border); font-size: 13px; }
@@ -178,9 +175,8 @@ input::placeholder, textarea::placeholder{ color: var(--outdoor-placeholder); op
 #menuPanel .import-file{ font-size: 13px; color: var(--outdoor-muted); }
 #menuPanel .import-file::file-selector-button{ min-height: 48px; color: var(--outdoor-ink); background: #fff; border: 2px solid var(--outdoor-border); }
 #menuPanel .menu-chevron{ color: var(--outdoor-muted); }
-#menuPanel .dev-footer{ color: var(--outdoor-ink); background: #f1edf7; border-color: #9d8cb3; }
-#menuPanel .dev-footer summary small{ color: var(--outdoor-ink); }
-#menuPanel .menu-action.danger, #menuPanel .dev-btn.danger{ color: var(--red); background: #fff5f4; border-color: var(--red); }
+
+#menuPanel .menu-action.danger{ color: var(--red); background: #fff5f4; border-color: var(--red); }
 #menuPanel .menu-action:disabled{ color: #53636d; background: #e7edf0; border: 2px dashed #81919b; opacity: 1; }
 button:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible,
 #menuPanel :is(button, summary, input, select):focus-visible{ outline: 3px solid var(--outdoor-blue); outline-offset: 3px; }

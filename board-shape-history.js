@@ -26,19 +26,13 @@ const BoardShapeHistory = (() => {
   }
 
   const byId = id => document.getElementById(id);
-  function snapshot() {
-    const raw = localStorage.getItem(KEY);
-    const items = JSON.parse(raw === null ? '[]' : raw);
-    if (!Array.isArray(items)) throw new Error('Invalid history');
-    return {raw,items};
-  }
   function apply() {
     if (typeof HistoryEditor !== 'undefined' && HistoryEditor.isEditing()) {showToast('履歴の編集を保存してから、形状をまとめて反映してください。','info');return;}
     const board = byId('board').value.trim();
     if (!board) {showToast('反映する板名を入力してください。','info');byId('board').focus();return;}
     const source = Object.fromEntries(Object.entries(ids).map(([key,id]) => [key,byId(id).value]));
     let before, next;
-    try {before = snapshot();next = plan(before.items, board, source);}
+    try {before = readHistorySnapshot();next = plan(before.items, board, source);}
     catch {showToast('保存履歴を読み込めませんでした。反映していません。','error');return;}
     if (!Object.keys(next.patch).length) {showToast('反映する板の形状か補足を入力してください。','info');byId('detailShape').focus();return;}
     if (!next.changed) {showToast(next.matched ? 'この板の履歴はすべて同じ形状です。' : 'この板名と一致する保存履歴はありません。','info');return;}
@@ -57,8 +51,7 @@ const BoardShapeHistory = (() => {
     if (!confirm(message)) return;
     try {
       // Another tab can change history while the confirmation is open.
-      if (localStorage.getItem(KEY) !== before.raw) {showToast('確認中に履歴が変わりました。もう一度内容を確認してください。','info');return;}
-      localStorage.setItem(KEY, JSON.stringify(next.items));
+      if (!writeHistoryIfUnchanged(before.raw, next.items)) {showToast('確認中に履歴が変わりました。もう一度内容を確認してください。','info');return;}
     } catch {showToast('履歴を保存できませんでした。反映していません。','error');return;}
     render();
     showToast(`${next.changed}件の履歴に板の形状を反映しました。`,'success');

@@ -57,7 +57,7 @@ const DetailData = (() => {
     const d=normalize(value);
     return ['shape','nose','bend'].every(key=>!filters[key] || (filters[key]==='__unset__' ? !d[key] : d[key]===filters[key]));
   };
-  const escape = value => String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const escape = escapeHtml;
   const historyParts = value => {
     const d=normalize(value),r=rows(d);
     const line=([k,v])=>`<div class="history-inline-row"><dt>${escape(k)}</dt><dd>${escape(v)}</dd></div>`;

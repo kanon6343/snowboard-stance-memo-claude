@@ -50,7 +50,6 @@ const HistoryEditor = (() => {
   const byId=id=>document.getElementById(id),dialog=byId('historyEditConfirm'),favoriteDialog=byId('favoriteEditConfirm');
   let state=null,pending=null,opening=null;
   const label=item=>`${typeof item.board==='string'&&item.board.trim()||'板名なし'} · ${DetailHistoryData.date(item)}`;
-  function snapshot(){const raw=localStorage.getItem(KEY),items=JSON.parse(raw===null?'[]':raw);if(!Array.isArray(items))throw new Error('Invalid history');return {raw,items};}
   function sync(){byId('historyEditBanner').hidden=!state;byId('historyEditTarget').textContent=state?label(state.original):'';byId('saveBtn').textContent=state?'変更を保存':'この設定を保存';byId('clearBtn').hidden=!!state;byId('cancelHistoryEditBottom').hidden=!state;}
   function closeConfirm(){pending=null;if(dialog.open)dialog.close();}
   function closeFavorite(){opening=null;if(favoriteDialog.open)favoriteDialog.close();}
@@ -64,7 +63,7 @@ const HistoryEditor = (() => {
   function begin(id,load){
     if(favoriteDialog.open)return false;
     let item;
-    try{const matches=snapshot().items.filter(record=>idOf(record)===String(id));if(!id||matches.length!==1){showToast('この履歴を特定できません。履歴を読み直してください。','error');return false;}item=matches[0];}
+    try{const matches=readHistorySnapshot().items.filter(record=>idOf(record)===String(id));if(!id||matches.length!==1){showToast('この履歴を特定できません。履歴を読み直してください。','error');return false;}item=matches[0];}
     catch{showToast('履歴を読み込めませんでした。編集を開始していません。','error');return false;}
     if(item.favorite){
       opening={original:clone(item),load};
@@ -84,7 +83,7 @@ const HistoryEditor = (() => {
     if(!opening)return;
     const request=opening;
     let item;
-    try{const matches=snapshot().items.filter(record=>idOf(record)===idOf(request.original));if(matches.length!==1||!equal(matches[0],request.original)){closeFavorite();showToast('確認中に履歴が変わりました。もう一度「編集」を選んでください。','info');return;}item=matches[0];}
+    try{const matches=readHistorySnapshot().items.filter(record=>idOf(record)===idOf(request.original));if(matches.length!==1||!equal(matches[0],request.original)){closeFavorite();showToast('確認中に履歴が変わりました。もう一度「編集」を選んでください。','info');return;}item=matches[0];}
     catch{closeFavorite();showToast('履歴を読み込めませんでした。編集を開始していません。','error');return;}
     closeFavorite();start(item,request.load);
   }
@@ -102,7 +101,7 @@ const HistoryEditor = (() => {
   function save(draft){
     if(!state)return;
     let current,next;
-    try{current=snapshot();next=plan(current.items,state.original,draft);}
+    try{current=readHistorySnapshot();next=plan(current.items,state.original,draft);}
     catch{showToast('保存履歴を読み込めませんでした。入力内容は残しています。','error');return;}
     if(next.error){failure(next.error);return;}
     if(!next.changed){const found=finish();showToast(returnMessage('変更はありませんでした。',found),'info');return;}
@@ -115,8 +114,7 @@ const HistoryEditor = (() => {
     if(!state||!pending)return;
     const next=pending;
     try{
-      if(localStorage.getItem(KEY)!==next.raw){closeConfirm();showToast('確認中に履歴が変わりました。もう一度保存内容を確認してください。','info');return;}
-      localStorage.setItem(KEY,JSON.stringify(next.items));
+      if(!writeHistoryIfUnchanged(next.raw,next.items)){closeConfirm();showToast('確認中に履歴が変わりました。もう一度保存内容を確認してください。','info');return;}
     }catch{closeConfirm();showToast('保存できませんでした。編集中の入力内容は残しています。','error');return;}
     const found=finish();showToast(returnMessage('履歴の変更を保存しました。',found),'success');
   }
@@ -132,7 +130,7 @@ const HistoryEditor = (() => {
   sync();
   function restoreContext(original){
     reset();
-    try{const matches=snapshot().items.filter(item=>idOf(item)===idOf(original));if(matches.length!==1||!equal(matches[0],original))return false;state={original:clone(original)};sync();return true;}catch{return false;}
+    try{const matches=readHistorySnapshot().items.filter(item=>idOf(item)===idOf(original));if(matches.length!==1||!equal(matches[0],original))return false;state={original:clone(original)};sync();return true;}catch{return false;}
   }
   return {plan,begin,save,beforeNew,isEditing:()=>!!state,draftContext:()=>state?clone(state.original):null,restoreContext};
 })();

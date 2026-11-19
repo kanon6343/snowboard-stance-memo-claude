@@ -379,7 +379,7 @@ def build(results, obs_time, now):
     chips = ['<a href="#top">まとめ</a>', '<a href="#fav">★</a>'] + [f'<a href="#{rid[g]}">{html.escape(g)}</a>' for g in regions]
 
     return f"""<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>雪山レポート {now:%m/%d}</title><style>{CSS}</style></head><body>
+<title>雪山レポート {now:%m/%d}</title>{icon_links()}<style>{CSS}</style></head><body>
 <nav class="chips" aria-label="地域へ移動"><div class="chips-in">{"".join(chips)}</div></nav>
 <main>
 <section id="top">
@@ -518,6 +518,7 @@ def main():
     (SITE / "index.html").write_text(page, encoding="utf-8")
     old = page.replace('href="archive/"', 'href="./"')   # 過去の報告ページは1段深いので、戻る先もずらす
     if OPT.back and not re.match(r"^(/|[a-z]+:)", OPT.back):
+        old = old.replace(icon_links(), icon_links("../"), 1)
         old = old.replace(f'<p class="back"><a href="{html.escape(OPT.back)}">', f'<p class="back"><a href="../{html.escape(OPT.back)}">', 1)
     (SITE / "archive" / f"{now:%Y-%m-%d}.html").write_text(old, encoding="utf-8")
     archive_index()
@@ -534,12 +535,21 @@ def main():
     return 1 if len(bad) == len(results) else 0
 
 
+def icon_links(up=""):
+    """スタンスメモ（Claude 版）と同じアイコン。--back が相対パスの時だけ付ける（up は1段深いページ用）"""
+    if not OPT.back or re.match(r"^(/|[a-z]+:)", OPT.back):
+        return ""
+    base = html.escape(up + OPT.back)
+    return (f'<link rel="icon" href="{base}icons/icon-claude-192.png" type="image/png">'
+            f'<link rel="apple-touch-icon" href="{base}icons/apple-touch-icon-claude.png">')
+
+
 def archive_index():
     files = sorted((SITE / "archive").glob("20*.html"), reverse=True)
     links = "".join(f'<a class="card" style="display:block" href="{f.name}">{f.stem}</a>' for f in files)
     (SITE / "archive" / "index.html").write_text(
         f'<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
-        f'<title>過去の雪山レポート</title><style>{CSS}</style></head><body><main><p><a href="../">← 最新</a></p><h1>過去の報告</h1>{links}</main></body></html>',
+        f'<title>過去の雪山レポート</title>{icon_links("../")}<style>{CSS}</style></head><body><main><p><a href="../">← 最新</a></p><h1>過去の報告</h1>{links}</main></body></html>',
         encoding="utf-8")
 
 
