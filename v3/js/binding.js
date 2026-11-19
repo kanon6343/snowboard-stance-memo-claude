@@ -67,6 +67,41 @@ export function bindingBoard(state, onChange, getDir) {
   return root;
 }
 
+// 簡易入力用：1 本の足のビス穴を横に並べる（上の段＝つま先側、下の段＝かかと側、真ん中＝推奨位置）。
+// レギュラーはノーズが左、グーフィーはノーズが右（板の上に立って足元を見た向き）。
+export function holesStrip(state, getSide, getDir, onChange) {
+  const root = h('div.strip', { role: 'group' });
+  const cols = dir => (dir === 'goofy' ? [5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5]);
+  function build() {
+    const side = getSide(), dir = getDir();
+    root.dataset.side = side; root.dataset.dir = dir;
+    root.setAttribute('aria-label', `${LABEL[side]}のビス穴`);
+    const order = cols(dir);
+    const hole = i => h('button.hole', { type: 'button', dataset: { index: i }, 'aria-label': `${LABEL[side]} ${i < 6 ? 'つま先側' : 'かかと側'} ノーズから${(i % 6) + 1}番目`, onclick: () => {
+      const list = state.holes[side], at = list.indexOf(i);
+      if (at >= 0) list.splice(at, 1); else list.push(i);
+      list.sort((a, b) => a - b); paint(); onChange();
+    } });
+    root.replaceChildren(
+      h('div.strip-ends', h('span', '↑ つま先側'), h('span', dir === 'goofy' ? 'ノーズ →' : '← ノーズ')),
+      h('div.strip-row', order.map(c => hole(c))),
+      h('div.strip-row.refs', order.map(c => h('button.ref', { type: 'button', dataset: { index: c }, 'aria-label': `${LABEL[side]} 推奨位置 ノーズから${c + 1}番目`, onclick: () => {
+        state.reference[side] = state.reference[side] === c ? null : c; paint(); onChange();
+      } }))),
+      h('div.strip-row', order.map(c => hole(6 + c))));
+    paint();
+  }
+  function paint() {
+    const side = getSide();
+    if (root.dataset.side !== side || root.dataset.dir !== getDir()) { build(); return; }
+    $$('.hole', root).forEach(b => b.setAttribute('aria-pressed', String(state.holes[side].includes(Number(b.dataset.index)))));
+    $$('.ref', root).forEach(b => b.setAttribute('aria-pressed', String(state.reference[side] === Number(b.dataset.index))));
+  }
+  root.paint = paint;
+  build();
+  return root;
+}
+
 // 履歴用の小さい図（押せない）。前足を左に置き、つま先側の向きもスタンスに合わせる
 export function miniBoard(r, dir = 'regular') {
   const wrap = h('div.mini-board', { role: 'img', 'aria-label': `ビス穴の図（${dir === 'goofy' ? 'グーフィー' : 'レギュラー'}）` });

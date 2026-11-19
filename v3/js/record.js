@@ -1,6 +1,6 @@
 // 記録する画面（簡易／詳細）。下書きは自動で残す。
 import { h, $, $$, toast, ask, segmented } from './ui.js';
-import { bindingBoard } from './binding.js';
+import { bindingBoard, holesStrip } from './binding.js';
 import * as S from './store.js';
 
 const blank = () => ({
@@ -26,7 +26,8 @@ export function createRecordView(app) {
     draftTimer = setTimeout(() => S.writeJSON(S.KEYS.draft, isEmpty() && !editing ? null : { state: st, editing, at: Date.now() }), 250);
   }
   const isEmpty = () => JSON.stringify({ ...st, detail: S.normalizeDetail(st.detail) }) === JSON.stringify(blank());
-  const changed = () => { saveDraft(); renderSummary(); };
+  let quick = null;
+  const changed = () => { saveDraft(); renderSummary(); quick?.refresh(); };
 
   // ---- 部品
   const field = (label, control, hint) => h('label.field', h('span.field-label', label), control, hint ? h('small.hint', hint) : null);
@@ -143,10 +144,51 @@ export function createRecordView(app) {
   const saveBtn = h('button.btn.primary.grow', { type: 'button', onclick: save }, 'この設定を保存');
   const bar = h('div.action-bar', clearBtn, saveBtn);
 
+  // ---- 簡易入力：1 画面にまとめる（左右の足はタブで切り替え、ビス穴は横並び）
+  quick = (() => {
+    let side = 'left';
+    const qBoard = track(input(() => st.board, v => (st.board = v), { type: 'text', list: 'boardNames', maxlength: '80', placeholder: '板の名前', autocomplete: 'off', 'aria-label': '板' }));
+    const qSnow = segmented(S.SNOW.map(s => [s, s]), st.snow, v => { st.snow = v; changed(); }, { label: '雪質' });
+    const qStance = segmented(S.STANCE.map(s => [s, s]), st.stance, v => { st.stance = v; changed(); }, { label: 'スタンス' });
+    const qWidth = track(input(() => st.stanceWidth, v => (st.stanceWidth = v.trim()), { type: 'number', inputmode: 'decimal', min: '0', step: '0.5', placeholder: '幅', 'aria-label': 'スタンス幅（cm）' }));
+    const tabs = h('div.foot-tabs', { role: 'tablist', 'aria-label': '足' });
+    const tabBtn = s => h('button', { type: 'button', role: 'tab', dataset: { side: s }, onclick: () => { side = s; render(); } });
+    const tabL = tabBtn('left'), tabR = tabBtn('right'); tabs.append(tabL, tabR);
+    const steppers = { left: stepper('left'), right: stepper('right') };
+    const disks = {};
+    for (const s of ['left', 'right']) {
+      disks[s] = segmented(S.DISK.map(v => [v, v]), st.disk[s], v => { st.disk[s] = v; changed(); }, { label: `${s === 'left' ? '左' : '右'}足のディスク` });
+      disks[s].classList.add('compact');
+    }
+    const footRow = h('div.quick-foot');
+    const strip = holesStrip(st, () => side, () => app.settings.stanceDir, changed);
+    const qComment = h('textarea.quick-memo', { rows: 1, maxlength: '2000', placeholder: '感想（滑った感じ）', 'aria-label': '感想', oninput: () => { st.comment = qComment.value; changed(); } });
+    syncers.push({ sync: () => { qSnow.set(st.snow); qStance.set(st.stance); disks.left.set(st.disk.left); disks.right.set(st.disk.right); qComment.value = st.comment; render(); } });
+    function render() {
+      for (const [b, s] of [[tabL, 'left'], [tabR, 'right']]) {
+        const a = s === 'left' ? st.leftAngle : st.rightAngle;
+        b.replaceChildren(h('span', s === 'left' ? '左足' : '右足'), h('strong', a === '' ? '—' : `${Number(a) > 0 ? '+' : ''}${a}°`), h('small', `穴${st.holes[s].length}`));
+        b.setAttribute('aria-selected', String(s === side));
+      }
+      if (footRow.firstChild !== steppers[side]) footRow.replaceChildren(steppers[side], disks[side]);
+      strip.paint();
+    }
+    const el = h('div.quick',
+      qBoard,
+      qSnow,
+      h('div.quick-row', qStance, h('span.with-unit', qWidth, h('span.unit', 'cm'))),
+      h('div.quick-feet', tabs, footRow, strip),
+      qComment);
+    render();
+    return { el, refresh: render };
+  })();
+
   root.append(
     h('header.view-head', h('h1', { id: 'recordTitle' }, '記録する'), modeSwitch),
-    editBanner, summary,
+    editBanner, summary, quick.el,
     cardBoard, cardShape, cardStance, cardFeet, cardSetback, cardHoles, cardGear, cardMemo, bar);
+  // 詳細入力の時だけ、カードの並びで全部を見せる
+  for (const c of [cardBoard, cardStance, cardFeet, cardHoles, cardMemo]) c.classList.add('detail-only');
 
   // ---- 表示の更新
   function applyMode() {
